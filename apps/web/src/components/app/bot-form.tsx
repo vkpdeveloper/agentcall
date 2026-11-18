@@ -18,7 +18,7 @@ export const EMOJI: Record<string, string> = {
   ":owl:": "🦉",
 };
 
-const SKILLS: { id: string; label: string }[] = [
+export const SKILLS: { id: string; label: string }[] = [
   { id: "triage", label: "Triage" },
   { id: "bugfix", label: "Fix bugs" },
   { id: "security", label: "Security" },

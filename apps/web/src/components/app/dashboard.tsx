@@ -19,17 +19,45 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { GitHubIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
 import { api, errorMessage, type Bot, type Integrations, type Task, type User } from "@/lib/api";
-import { BotForm, EMOJI } from "./bot-form";
+import { BotForm, EMOJI, SKILLS } from "./bot-form";
 import { useRedirect } from "./onboarding";
 import { Banner, Button, Card, ease, Spinner, Textarea } from "./ui";
 
-const STATUS: Record<Task["status"], { label: string; dot: string }> = {
-  queued: { label: "Queued", dot: "bg-neutral-400" },
-  running: { label: "Working", dot: "bg-gold animate-pulse" },
-  succeeded: { label: "Done", dot: "bg-emerald-400" },
-  failed: { label: "Failed", dot: "bg-red-400" },
-  cancelled: { label: "Cancelled", dot: "bg-neutral-600" },
+const STATUS: Record<Task["status"], { label: string; chip: string }> = {
+  queued: { label: "Queued", chip: "border-white/10 bg-white/[0.04] text-neutral-300" },
+  running: { label: "Working", chip: "border-gold/30 bg-gold/10 text-gold" },
+  succeeded: { label: "Done", chip: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
+  failed: { label: "Failed", chip: "border-red-400/25 bg-red-400/10 text-red-300" },
+  cancelled: { label: "Cancelled", chip: "border-white/10 bg-white/[0.03] text-neutral-400" },
 };
+
+function Stats({ bots, tasks }: { bots: Bot[] | null; tasks: Task[] | null }) {
+  const items = [
+    { label: "Active bots", value: bots?.filter((b) => b.enabled).length },
+    { label: "Tasks handed over", value: tasks?.length },
+    { label: "Done", value: tasks?.filter((t) => t.status === "succeeded").length },
+    { label: "PRs shipped", value: tasks?.filter((t) => t.result?.prUrl).length },
+  ];
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease, delay: 0.1 }}
+      className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+    >
+      {items.map((it, i) => (
+        <div key={it.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+          {it.value === undefined ? (
+            <div className="h-7 w-12 animate-pulse rounded-lg bg-white/[0.05]" />
+          ) : (
+            <p className="text-2xl font-semibold tracking-tight text-white">{it.value}</p>
+          )}
+          <p className="mt-1 text-[11px] font-medium tracking-wide text-neutral-500 uppercase">{it.label}</p>
+        </div>
+      ))}
+    </motion.div>
+  );
+}
 
 export function Dashboard() {
   const router = useRouter();
@@ -91,8 +119,9 @@ export function Dashboard() {
         <main className="mx-auto max-w-6xl px-5 pb-24 pt-10">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
             <h1 className="text-3xl font-semibold tracking-tight text-white">{user ? `Hi, ${user.name.split(" ")[0]}` : " "}</h1>
-            <p className="mt-1.5 text-neutral-400">Your agents, what they&apos;re working on, and what they shipped.</p>
+            <p className="mt-1.5 text-neutral-400">Your agents, what they&apos;re working on, and what they&apos;ve shipped.</p>
           </motion.div>
+          <Stats bots={bots} tasks={tasks} />
           <div className="mt-6">
             <Banner>{error}</Banner>
           </div>
@@ -364,10 +393,8 @@ function TaskList({
                 <span className="mt-0.5 text-lg leading-none">{EMOJI[bot?.emoji ?? ""] ?? "🤖"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm text-neutral-200">{t.prompt}</p>
-                  <p className="mt-1 flex items-center gap-2 text-xs text-neutral-500">
-                    <span className={`size-1.5 rounded-full ${s.dot}`} />
-                    {s.label}
-                    <span>·</span>
+                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.chip}`}>{s.label}</span>
                     {bot?.name ?? "Bot"}
                     <span>·</span>
                     {t.source === "slack" ? "Slack" : "Dashboard"}
@@ -508,6 +535,15 @@ function BotCard({ bot, onEdit, onChange }: { bot: Bot; onEdit: () => void; onCh
             )}
           </span>
         </div>
+        {bot.skills.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {bot.skills.map((id) => (
+              <span key={id} className="rounded-full border border-gold/20 bg-gold/[0.06] px-2 py-0.5 text-[11px] text-gold/90">
+                {SKILLS.find((s) => s.id === id)?.label ?? id}
+              </span>
+            ))}
+          </div>
+        )}
       </Card>
     </motion.div>
   );
