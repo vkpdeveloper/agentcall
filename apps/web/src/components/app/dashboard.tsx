@@ -45,14 +45,14 @@ function Stats({ bots, tasks }: { bots: Bot[] | null; tasks: Task[] | null }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease, delay: 0.1 }}
-      className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"
+      className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.06] sm:grid-cols-4"
     >
-      {items.map((it, i) => (
-        <div key={it.label} className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4">
+      {items.map((it) => (
+        <div key={it.label} className="bg-[#0b0b0c] p-4">
           {it.value === undefined ? (
-            <div className="h-7 w-12 animate-pulse rounded-lg bg-white/[0.05]" />
+            <div className="h-6 w-10 animate-pulse rounded-md bg-white/[0.05]" />
           ) : (
-            <p className="text-2xl font-semibold tracking-tight text-white">{it.value}</p>
+            <p className="text-xl font-semibold tracking-tight text-white">{it.value}</p>
           )}
           <p className="mt-1 text-[11px] font-medium tracking-wide text-neutral-500 uppercase">{it.label}</p>
         </div>
@@ -114,36 +114,34 @@ export function Dashboard() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="flex min-h-dvh">
-        <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-white/[0.06] bg-white/[0.01] p-3.5 lg:flex">
-          <Link href="/" className="flex items-center gap-2.5 px-3 pb-5 pt-2 text-sm font-semibold tracking-tight text-white">
+        <aside className="sticky top-0 hidden h-dvh w-14 shrink-0 flex-col items-center border-r border-white/[0.06] py-4 lg:flex">
+          <Link href="/" aria-label="agentcall home" className="pb-5">
             <Logo size={26} />
-            agentcall
           </Link>
-          <nav aria-label="Workspace" className="space-y-1">
-            <a href="#top" className="flex items-center gap-2.5 rounded-xl bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white">
-              <HugeiconsIcon icon={DashboardCircleIcon} size={17} /> Dashboard
+          <nav aria-label="Workspace" className="flex flex-col items-center gap-1.5">
+            <a href="#top" aria-label="Dashboard" title="Dashboard" className="grid size-9 place-items-center rounded-[10px] bg-white/[0.06] text-white">
+              <HugeiconsIcon icon={DashboardCircleIcon} size={17} />
             </a>
-            <a href="#tasks" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white">
-              <HugeiconsIcon icon={CheckmarkBadge01Icon} size={17} /> Tasks
+            <a href="#tasks" aria-label="Tasks" title="Tasks" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
+              <HugeiconsIcon icon={CheckmarkBadge01Icon} size={17} />
             </a>
-            <a href="#bots" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white">
-              <HugeiconsIcon icon={AiChat02Icon} size={17} /> Bots
+            <a href="#bots" aria-label="Bots" title="Bots" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
+              <HugeiconsIcon icon={AiChat02Icon} size={17} />
             </a>
             <Link
               href="/onboarding?step=github"
-              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white"
+              aria-label="Integrations"
+              title="Integrations"
+              className="relative grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white"
             >
-              <HugeiconsIcon icon={Settings01Icon} size={17} /> Integrations
-              {notConnected > 0 && (
-                <span className="ml-auto rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-neutral-300">{notConnected}</span>
-              )}
+              <HugeiconsIcon icon={Settings01Icon} size={17} />
+              {notConnected > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-white/70" />}
             </Link>
           </nav>
-          <div className="mt-auto flex items-center gap-2.5 rounded-xl border border-white/[0.07] px-3 py-2.5">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/[0.08] text-[11px] font-bold text-neutral-300">{initials}</span>
-            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-white">{user?.name}</span>
-            <button onClick={signOut} aria-label="Sign out" className="grid size-8 shrink-0 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white/[0.06] hover:text-white">
-              <HugeiconsIcon icon={Logout01Icon} size={16} />
+          <div className="mt-auto flex flex-col items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-full border border-white/[0.08] text-[10px] font-semibold text-neutral-300">{initials}</span>
+            <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-8 place-items-center rounded-full text-neutral-600 transition-colors hover:text-white">
+              <HugeiconsIcon icon={Logout01Icon} size={15} />
             </button>
           </div>
         </aside>
@@ -167,48 +165,46 @@ export function Dashboard() {
             </div>
           </header>
 
-          <main className="mx-auto max-w-6xl px-5 pb-24 pt-8 lg:pt-10">
+          <main className="mx-auto w-full max-w-[960px] px-5 pb-24 pt-8 lg:pt-12">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
-            <h1 className="text-3xl font-semibold tracking-tight text-white">{user ? `Hi, ${user.name.split(" ")[0]}` : " "}</h1>
-            <p className="mt-1.5 text-neutral-400">Your agents, what they&apos;re working on, and what they&apos;ve shipped.</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">{user ? `Hi, ${user.name.split(" ")[0]}` : " "}</h1>
+            <p className="mt-1.5 text-sm text-neutral-500">Your agents, what they&apos;re working on, and what they&apos;ve shipped.</p>
           </motion.div>
+          {integrations && <ConnectionsBar integrations={integrations} />}
           <Stats bots={bots} tasks={tasks} />
           <div className="mt-6">
             <Banner>{error}</Banner>
           </div>
 
-          {integrations && <IntegrationStrip integrations={integrations} />}
-
-          <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px]">
-            <section id="tasks" className="scroll-mt-6">
-              <SectionTitle>Tasks</SectionTitle>
-              {bots?.some((b) => b.enabled) && (
-                <Composer
-                  bots={bots}
-                  ready={integrations ? integrations.opencode.connected && integrations.instabox.connected : null}
-                  onCreated={(t) => setTasks((ts) => [t, ...(ts ?? [])])}
-                />
-              )}
-              <TaskList
-                tasks={tasks}
-                bots={bots ?? []}
-                onChange={loadTasks}
-                hasComposer={bots?.some((b) => b.enabled) ?? true}
-                onNewBot={() => setEditing("new")}
+          <section id="tasks" className="mt-10 scroll-mt-6">
+            <SectionTitle>Tasks</SectionTitle>
+            {bots?.some((b) => b.enabled) && (
+              <Composer
+                bots={bots}
+                ready={integrations ? integrations.opencode.connected && integrations.instabox.connected : null}
+                onCreated={(t) => setTasks((ts) => [t, ...(ts ?? [])])}
               />
-            </section>
+            )}
+            <TaskList
+              tasks={tasks}
+              bots={bots ?? []}
+              onChange={loadTasks}
+              hasComposer={bots?.some((b) => b.enabled) ?? true}
+              onNewBot={() => setEditing("new")}
+            />
+          </section>
 
-            <section id="bots" className="scroll-mt-6">
-              <SectionTitle
-                action={
-                  <Button variant="secondary" className="h-9 px-3.5" onClick={() => setEditing("new")}>
-                    <HugeiconsIcon icon={Add01Icon} size={16} /> New bot
-                  </Button>
-                }
-              >
-                Bots
-              </SectionTitle>
-              <div className="space-y-3">
+          <section id="bots" className="mt-10 scroll-mt-6">
+            <SectionTitle
+              action={
+                <Button variant="secondary" className="h-9 px-3.5" onClick={() => setEditing("new")}>
+                  <HugeiconsIcon icon={Add01Icon} size={16} /> New bot
+                </Button>
+              }
+            >
+              Bots
+            </SectionTitle>
+            <div className="grid gap-3 sm:grid-cols-2">
                 {bots === null ? (
                   [0, 1].map((i) => <div key={i} className="h-28 animate-pulse rounded-3xl bg-white/[0.03]" />)
                 ) : bots.length === 0 ? (
@@ -227,7 +223,6 @@ export function Dashboard() {
                 )}
               </div>
             </section>
-          </div>
         </main>
         </div>
 
@@ -260,66 +255,65 @@ function SectionTitle({ children, action }: { children: ReactNode; action?: Reac
   );
 }
 
-function IntegrationStrip({ integrations: i }: { integrations: Integrations }) {
+function ConnectionsBar({ integrations: i }: { integrations: Integrations }) {
   const github = useRedirect("/integrations/github/install");
   const items = [
     {
-      icon: <GitHubIcon size={18} />,
+      icon: <GitHubIcon size={14} />,
       name: "GitHub",
       value: i.github.connected ? i.github.account?.login : i.github.available ? null : "Not configured",
       action: i.github.available && !i.github.connected ? github.start : undefined,
       href: undefined as string | undefined,
     },
     {
-      icon: <SlackIcon size={18} />,
+      icon: <SlackIcon size={14} />,
       name: "Slack",
       value: i.slack.channel ? `#${i.slack.channel.name}` : i.slack.available ? null : "Not configured",
       href: i.slack.available ? "/onboarding?step=slack" : undefined,
     },
-    { icon: <OpenCodeIcon size={18} />, name: "OpenCode", value: i.opencode.connected ? `••••${i.opencode.last4}` : null, href: "/onboarding?step=opencode" },
+    { icon: <OpenCodeIcon size={14} />, name: "OpenCode", value: i.opencode.connected ? `••••${i.opencode.last4}` : null, href: "/onboarding?step=opencode" },
     {
-      icon: <InstaboxIcon size={18} />,
+      icon: <InstaboxIcon size={14} />,
       name: "instabox",
       value: i.instabox.connected ? `${i.instabox.workspace} · ${i.instabox.plan}` : null,
       href: "/onboarding?step=instabox",
     },
   ];
   return (
-    <motion.div
-      initial="hidden"
-      animate="show"
-      variants={{ show: { transition: { staggerChildren: 0.05 } } }}
-      className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4"
-    >
+    <div className="mt-5 flex flex-wrap gap-2">
       {items.map((it) => {
-        const body = (
+        const connected = Boolean(it.value) && it.value !== "Not configured";
+        const pill = (
           <>
-            <div className="flex items-center justify-between text-neutral-300">
-              {it.icon}
-              <span className={`size-2 rounded-full ${it.value && it.value !== "Not configured" ? "bg-white/80" : "bg-neutral-700"}`} />
-            </div>
-            <p className="mt-4 text-sm font-medium text-white">{it.name}</p>
-            <p className="mt-0.5 truncate text-[13px] text-neutral-500">{it.value ?? "Connect"}</p>
+            {it.icon}
+            <span className="text-neutral-300">{it.name}</span>
+            <span className="text-neutral-500">{it.value ?? "Connect"}</span>
+            <span className={`size-1.5 rounded-full ${connected ? "bg-white/80" : "bg-neutral-600"}`} />
           </>
         );
-        const cls = "block rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 text-left transition-colors hover:border-white/15 hover:bg-white/[0.04]";
+        const cls =
+          "flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.02] px-3 py-1.5 text-xs transition-colors hover:border-white/15 hover:bg-white/[0.04]";
+        if ("action" in it && it.action) {
+          return (
+            <button key={it.name} onClick={it.action} className={cls}>
+              {pill}
+            </button>
+          );
+        }
+        if (it.href) {
+          return (
+            <Link key={it.name} href={it.href} className={cls}>
+              {pill}
+            </Link>
+          );
+        }
         return (
-          <motion.div key={it.name} variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease } } }}>
-            {"action" in it && it.action ? (
-              <button onClick={it.action} className={`${cls} w-full`}>
-                {body}
-              </button>
-            ) : it.href ? (
-              <Link href={it.href} className={cls}>
-                {body}
-              </Link>
-            ) : (
-              <div className={cls}>{body}</div>
-            )}
-          </motion.div>
+          <span key={it.name} className={cls}>
+            {pill}
+          </span>
         );
       })}
-    </motion.div>
+    </div>
   );
 }
 
@@ -430,7 +424,15 @@ function TaskList({
     );
   }
   return (
-    <div className="divide-y divide-white/[0.05] overflow-hidden rounded-3xl border border-white/[0.07] bg-white/[0.015]">
+    <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.015]">
+      <div className="flex items-center gap-4 border-b border-white/[0.06] px-5 py-2.5 text-[11px] font-medium tracking-wider text-neutral-600 uppercase">
+        <span className="flex-1">Task</span>
+        <span className="hidden w-24 sm:block">Status</span>
+        <span className="hidden w-24 md:block">Bot</span>
+        <span className="hidden w-14 sm:block">Via</span>
+        <span className="hidden w-16 sm:block text-right">When</span>
+        <span className="w-4" />
+      </div>
       <AnimatePresence initial={false}>
         {tasks.map((t) => {
           const bot = bots.find((b) => b.id === t.botId);
@@ -440,26 +442,23 @@ function TaskList({
               <button
                 onClick={() => setOpen(open === t.id ? null : t.id)}
                 aria-expanded={open === t.id}
-                className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
+                className="flex w-full items-center gap-4 px-5 py-3.5 text-left transition-colors hover:bg-white/[0.02]"
               >
-                <span className="mt-0.5 text-lg leading-none">{EMOJI[bot?.emoji ?? ""] ?? "🤖"}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-sm text-neutral-200">{t.prompt}</p>
-                  <p className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                    <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${s.chip}`}>{s.label}</span>
-                    {bot?.name ?? "Bot"}
-                    <span>·</span>
-                    {t.source === "slack" ? "Slack" : "Dashboard"}
-                    <span>·</span>
-                    {ago(t.createdAt)}
-                  </p>
-                </div>
-                {t.result?.prUrl && <HugeiconsIcon icon={GitPullRequestIcon} size={16} className="mt-0.5 text-emerald-300" />}
-                <HugeiconsIcon
-                  icon={ArrowRight01Icon}
-                  size={14}
-                  className={`mt-0.5 shrink-0 text-neutral-600 transition-transform duration-200 ${open === t.id ? "rotate-90" : ""}`}
-                />
+                <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+                  <span className="mr-2">{EMOJI[bot?.emoji ?? ""] ?? "🤖"}</span>
+                  {t.prompt}
+                </span>
+                <span className={`hidden w-24 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] font-medium sm:block ${s.chip}`}>{s.label}</span>
+                <span className="hidden w-24 shrink-0 truncate text-xs text-neutral-500 md:block">{bot?.name ?? "Bot"}</span>
+                <span className="hidden w-14 shrink-0 text-xs text-neutral-500 sm:block">{t.source === "slack" ? "Slack" : "Dash"}</span>
+                <span className="hidden w-16 shrink-0 text-right text-xs text-neutral-500 sm:block">{ago(t.createdAt)}</span>
+                <span className="w-4 shrink-0 text-right">
+                  {t.result?.prUrl ? (
+                    <HugeiconsIcon icon={GitPullRequestIcon} size={14} className="text-neutral-300" />
+                  ) : (
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={12} className={`text-neutral-600 transition-transform duration-200 ${open === t.id ? "rotate-90" : ""}`} />
+                  )}
+                </span>
               </button>
               <AnimatePresence initial={false}>
                 {open === t.id && <TaskDetail task={t} onChange={onChange} />}
