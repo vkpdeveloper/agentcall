@@ -7,7 +7,7 @@ import { requireUser, type AuthVars } from "../lib/auth";
 import { errors, ok, validate } from "../lib/http";
 
 export const BOT_SKILLS = ["triage", "bugfix", "security", "testing", "repro", "review", "support"] as const;
-export const DEFAULT_MODEL = "big-pickle";
+export const DEFAULT_MODEL = "opencode/big-pickle";
 
 const repo = z.string().regex(/^[\w.-]+\/[\w.-]+$/, "Use owner/name for repositories.");
 const botInput = z.object({

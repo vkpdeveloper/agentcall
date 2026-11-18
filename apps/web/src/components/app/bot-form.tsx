@@ -1,10 +1,9 @@
 "use client";
 
-import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
-import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorMessage, type Bot, type Model, type Repo } from "@/lib/api";
+import { ModelPicker } from "./model-picker";
 import { Banner, Button, ease, Input, Textarea } from "./ui";
 
 export const EMOJI: Record<string, string> = {
@@ -55,7 +54,7 @@ export function BotForm({
     purpose: "",
     instructions: "",
     skills: [],
-    model: "big-pickle",
+    model: "opencode/big-pickle",
     repos: [],
     ...initial,
   });
@@ -161,33 +160,8 @@ export function BotForm({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[13px] font-medium text-neutral-300" htmlFor="bot-model">
-          Model
-        </label>
-        <div className="relative">
-          <select
-            id="bot-model"
-            value={draft.model}
-            onChange={(e) => set("model", e.target.value)}
-            className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-[15px] text-white outline-none transition focus:border-gold/60 focus:shadow-[0_0_0_4px_rgb(246_195_91_/_0.12)]"
-          >
-            {!models?.some((m) => m.id === draft.model) && <option value={draft.model}>{draft.model}</option>}
-            {models
-              ?.slice()
-              .sort((a, b) => Number(b.free) - Number(a.free) || a.name.localeCompare(b.name))
-              .map((m) => (
-                <option key={m.id} value={m.id} className="bg-neutral-950">
-                  {m.name}
-                  {m.free ? " · free" : ""}
-                </option>
-              ))}
-          </select>
-          <HugeiconsIcon
-            icon={ArrowRight01Icon}
-            size={16}
-            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rotate-90 text-neutral-500"
-          />
-        </div>
+        <p className="mb-1.5 text-[13px] font-medium text-neutral-300">Model</p>
+        <ModelPicker models={models} value={draft.model} onChange={(v) => set("model", v)} />
         <p className="mt-1.5 text-xs text-neutral-500">Runs through your OpenCode account.</p>
       </div>
 

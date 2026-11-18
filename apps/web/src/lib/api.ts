@@ -88,6 +88,6 @@ export type Task = {
   finishedAt: string | null;
 };
 
-export type Model = { id: string; name: string; free: boolean };
+export type Model = { id: string; name: string; free: boolean; provider: string };
 export type Repo = { fullName: string; private: boolean };
 export type Channel = { id: string; name: string; isPrivate: boolean; isMember: boolean };
