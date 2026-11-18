@@ -230,7 +230,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
 export function Backdrop() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
-      <div className="absolute left-1/2 top-[-30vmin] size-[110vmin] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(246_195_91_/_0.10),rgb(232_137_44_/_0.04)_45%,transparent_72%)]" />
+      <div className="absolute left-1/2 top-[-30vmin] size-[110vmin] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(124_201_242_/_0.07),rgb(124_201_242_/_0.03)_45%,transparent_72%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(rgb(255_255_255_/_0.035)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:radial-gradient(ellipse_at_top,#000_20%,transparent_70%)]" />
     </div>
   );
