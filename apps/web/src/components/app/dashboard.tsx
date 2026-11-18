@@ -26,11 +26,11 @@ import { useRedirect } from "./onboarding";
 import { Banner, Button, Card, ease, Spinner, Textarea } from "./ui";
 
 const STATUS: Record<Task["status"], { label: string; chip: string }> = {
-  queued: { label: "Queued", chip: "border-white/10 bg-white/[0.04] text-neutral-300" },
-  running: { label: "Working", chip: "border-gold/30 bg-gold/10 text-gold" },
-  succeeded: { label: "Done", chip: "border-emerald-400/25 bg-emerald-400/10 text-emerald-300" },
-  failed: { label: "Failed", chip: "border-red-400/25 bg-red-400/10 text-red-300" },
-  cancelled: { label: "Cancelled", chip: "border-white/10 bg-white/[0.03] text-neutral-400" },
+  queued: { label: "Queued", chip: "border-white/[0.08] bg-white/[0.02] text-neutral-400" },
+  running: { label: "Working", chip: "border-white/15 bg-white/[0.05] text-white" },
+  succeeded: { label: "Done", chip: "border-white/[0.08] bg-white/[0.02] text-neutral-300" },
+  failed: { label: "Failed", chip: "border-red-400/20 bg-red-400/[0.06] text-red-300/90" },
+  cancelled: { label: "Cancelled", chip: "border-white/[0.06] bg-transparent text-neutral-500" },
 };
 
 function Stats({ bots, tasks }: { bots: Bot[] | null; tasks: Task[] | null }) {
@@ -135,12 +135,12 @@ export function Dashboard() {
             >
               <HugeiconsIcon icon={Settings01Icon} size={17} /> Integrations
               {notConnected > 0 && (
-                <span className="ml-auto rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-gold">{notConnected}</span>
+                <span className="ml-auto rounded-full bg-white/[0.08] px-2 py-0.5 text-[10px] font-medium text-neutral-300">{notConnected}</span>
               )}
             </Link>
           </nav>
           <div className="mt-auto flex items-center gap-2.5 rounded-xl border border-white/[0.07] px-3 py-2.5">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold/20 text-[11px] font-bold text-gold">{initials}</span>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/[0.08] text-[11px] font-bold text-neutral-300">{initials}</span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-white">{user?.name}</span>
             <button onClick={signOut} aria-label="Sign out" className="grid size-8 shrink-0 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white/[0.06] hover:text-white">
               <HugeiconsIcon icon={Logout01Icon} size={16} />
@@ -296,7 +296,7 @@ function IntegrationStrip({ integrations: i }: { integrations: Integrations }) {
           <>
             <div className="flex items-center justify-between text-neutral-300">
               {it.icon}
-              <span className={`size-2 rounded-full ${it.value && it.value !== "Not configured" ? "bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153_/_0.7)]" : "bg-neutral-700"}`} />
+              <span className={`size-2 rounded-full ${it.value && it.value !== "Not configured" ? "bg-white/80" : "bg-neutral-700"}`} />
             </div>
             <p className="mt-4 text-sm font-medium text-white">{it.name}</p>
             <p className="mt-0.5 truncate text-[13px] text-neutral-500">{it.value ?? "Connect"}</p>
@@ -590,7 +590,7 @@ function BotCard({ bot, onEdit, onChange }: { bot: Bot; onEdit: () => void; onCh
         {bot.skills.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {bot.skills.map((id) => (
-              <span key={id} className="rounded-full border border-gold/20 bg-gold/[0.06] px-2 py-0.5 text-[11px] text-gold/90">
+              <span key={id} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] text-neutral-300">
                 {SKILLS.find((s) => s.id === id)?.label ?? id}
               </span>
             ))}
@@ -609,7 +609,7 @@ function Switch({ on, onToggle, disabled, label }: { on: boolean; onToggle: () =
       aria-label={label}
       disabled={disabled}
       onClick={onToggle}
-      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300 ${on ? "bg-gold" : "bg-white/15"}`}
+      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300 ${on ? "bg-white/30" : "bg-white/[0.08]"}`}
     >
       <motion.span
         className="absolute top-0.5 size-5 rounded-full bg-white shadow"
