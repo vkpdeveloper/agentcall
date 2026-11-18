@@ -114,6 +114,34 @@ describe("onboarding keys", () => {
 });
 
 describe("bots and tasks", () => {
+  const giveKeys = async (userId: string) =>
+    t.deps.db.insert(apiKeys).values([
+      { userId, provider: "opencode", keyEnc: t.deps.cipher.encrypt("oc-key-1234", aad.apiKey("opencode", userId)), last4: "1234", verifiedAt: new Date() },
+      { userId, provider: "instabox", keyEnc: t.deps.cipher.encrypt("ibk-key-5678", aad.apiKey("instabox", userId)), last4: "5678", verifiedAt: new Date() },
+    ]);
+
+  test("tasks are refused until the keys the run needs are connected", async () => {
+    const user = await t.signup();
+    const bot = (await t.call("POST", "/api/v1/bots", { name: "Fixer", purpose: "Fix bugs" })).body.data.bot;
+    expect((await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "x" })).body.error.code).toBe("opencode_missing");
+    await t.deps.db.insert(apiKeys).values({
+      userId: user.id,
+      provider: "opencode",
+      keyEnc: t.deps.cipher.encrypt("oc-key-1234", aad.apiKey("opencode", user.id)),
+      last4: "1234",
+      verifiedAt: new Date(),
+    });
+    expect((await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "x" })).body.error.code).toBe("instabox_missing");
+    await t.deps.db.insert(apiKeys).values({
+      userId: user.id,
+      provider: "instabox",
+      keyEnc: t.deps.cipher.encrypt("ibk-key-5678", aad.apiKey("instabox", user.id)),
+      last4: "5678",
+      verifiedAt: new Date(),
+    });
+    expect((await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "x" })).status).toBe(201);
+  });
+
   test("CRUD is scoped to the owner", async () => {
     await t.signup();
     const created = await t.call("POST", "/api/v1/bots", { name: "Sentinel", purpose: "Security triage", skills: ["security"] });
@@ -129,7 +157,8 @@ describe("bots and tasks", () => {
   });
 
   test("one running task per user", async () => {
-    await t.signup();
+    const user = await t.signup();
+    await giveKeys(user.id);
     const bot = (await t.call("POST", "/api/v1/bots", { name: "Fixer", purpose: "Fix bugs" })).body.data.bot;
     await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "first" });
     await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "second" });
@@ -141,7 +170,8 @@ describe("bots and tasks", () => {
   });
 
   test("cancelling a queued task", async () => {
-    await t.signup();
+    const user = await t.signup();
+    await giveKeys(user.id);
     const bot = (await t.call("POST", "/api/v1/bots", { name: "Fixer", purpose: "Fix bugs" })).body.data.bot;
     const task = (await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "x" })).body.data.task;
     expect((await t.call("POST", `/api/v1/tasks/${task.id}/cancel`)).body.data.cancelled).toBe(true);
@@ -206,6 +236,12 @@ describe("slack events", () => {
 describe("vm callbacks", () => {
   test("need the run's token and finish the task", async () => {
     const user = await t.signup();
+    await t.deps.db
+      .insert(apiKeys)
+      .values([
+        { userId: user.id, provider: "opencode", keyEnc: t.deps.cipher.encrypt("oc-key-1234", aad.apiKey("opencode", user.id)), last4: "1234", verifiedAt: new Date() },
+        { userId: user.id, provider: "instabox", keyEnc: t.deps.cipher.encrypt("ibk-key-5678", aad.apiKey("instabox", user.id)), last4: "5678", verifiedAt: new Date() },
+      ]);
     const bot = (await t.call("POST", "/api/v1/bots", { name: "Fixer", purpose: "Fix bugs" })).body.data.bot;
     await t.call("POST", "/api/v1/tasks", { botId: bot.id, prompt: "x" });
     const task = (await claimNext(t.deps))!;

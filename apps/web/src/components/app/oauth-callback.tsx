@@ -36,10 +36,16 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
         if (params.get("setup_action") === "request") {
           throw new Error("Your organization needs to approve the agentcall app first. You'll be able to connect once it does.");
         }
+        if (!params.get("installation_id") || !params.get("state")) {
+          throw new Error("The connection was cancelled before it finished. Start it again from setup.");
+        }
         const { account } = await api<{ account: { login: string } }>("/integrations/github/complete", {
           body: { installationId: params.get("installation_id"), code: params.get("code") ?? undefined, state: params.get("state") },
         });
         return `Connected to ${account.login}`;
+      }
+      if (!params.get("code") || !params.get("state")) {
+        throw new Error("The connection was cancelled before it finished. Start it again from setup.");
       }
       const { team } = await api<{ team: { name: string } }>("/integrations/slack/complete", {
         body: { code: params.get("code"), state: params.get("state") },
