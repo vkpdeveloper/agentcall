@@ -83,14 +83,21 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
             </span>
           </div>
           <h1 className="mt-6 text-lg font-semibold text-white">
-            {state.kind === "working" ? `Connecting ${provider === "github" ? "GitHub" : "Slack"}…` : state.kind === "done" ? state.label : "Couldn't connect"}
+            {state.kind === "working" ? `Connecting ${provider === "github" ? "GitHub" : "Slack"}…` : state.kind === "done" ? state.label : `Couldn't connect ${provider === "github" ? "GitHub" : "Slack"}`}
           </h1>
           {state.kind === "error" && (
             <>
-              <p className="mt-2 text-sm text-neutral-400">{state.message}</p>
-              <Link href={`/onboarding?step=${provider}`} className="mt-6">
-                <Button variant="secondary">Back to setup</Button>
-              </Link>
+              <p className="mt-2 text-sm leading-relaxed text-neutral-400">{state.message}</p>
+              <div className="mt-7 grid w-full gap-2.5">
+                <Link href={`/onboarding?step=${provider}`} className="w-full">
+                  <Button className="w-full justify-center">Start again from setup</Button>
+                </Link>
+                <Link href="/dashboard" className="w-full">
+                  <Button variant="ghost" className="w-full justify-center">
+                    Back to dashboard
+                  </Button>
+                </Link>
+              </div>
             </>
           )}
         </Card>

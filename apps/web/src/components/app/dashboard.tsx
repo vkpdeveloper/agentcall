@@ -2,10 +2,12 @@
 
 import {
   Add01Icon,
+  AiChat02Icon,
   ArrowRight01Icon,
   ArrowUpRight01Icon,
   Cancel01Icon,
-  CloudServerIcon,
+  CheckmarkBadge01Icon,
+  DashboardCircleIcon,
   Delete02Icon,
   GitPullRequestIcon,
   Logout01Icon,
@@ -16,7 +18,7 @@ import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { GitHubIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
+import { GitHubIcon, InstaboxIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
 import { api, errorMessage, type Bot, type Integrations, type Task, type User } from "@/lib/api";
 import { BotForm, EMOJI, SKILLS } from "./bot-form";
@@ -95,28 +97,77 @@ export function Dashboard() {
     router.replace("/login");
   };
 
+  const notConnected = integrations
+    ? [integrations.github.connected, Boolean(integrations.slack.channel), integrations.opencode.connected, integrations.instabox.connected].filter(
+        (c) => !c,
+      ).length
+    : 0;
+  const initials = user
+    ? user.name
+        .split(" ")
+        .map((p) => p[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "";
+
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-dvh">
-        <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/80 backdrop-blur-xl">
-          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
-            <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
-              <Logo size={28} />
-              agentcall
+      <div className="flex min-h-dvh">
+        <aside className="sticky top-0 hidden h-dvh w-[232px] shrink-0 flex-col border-r border-white/[0.06] bg-white/[0.01] p-3.5 lg:flex">
+          <Link href="/" className="flex items-center gap-2.5 px-3 pb-5 pt-2 text-sm font-semibold tracking-tight text-white">
+            <Logo size={26} />
+            agentcall
+          </Link>
+          <nav aria-label="Workspace" className="space-y-1">
+            <a href="#top" className="flex items-center gap-2.5 rounded-xl bg-white/[0.06] px-3 py-2.5 text-sm font-medium text-white">
+              <HugeiconsIcon icon={DashboardCircleIcon} size={17} /> Dashboard
+            </a>
+            <a href="#tasks" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white">
+              <HugeiconsIcon icon={CheckmarkBadge01Icon} size={17} /> Tasks
+            </a>
+            <a href="#bots" className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white">
+              <HugeiconsIcon icon={AiChat02Icon} size={17} /> Bots
+            </a>
+            <Link
+              href="/onboarding?step=github"
+              className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm text-neutral-400 transition-colors hover:bg-white/[0.04] hover:text-white"
+            >
+              <HugeiconsIcon icon={Settings01Icon} size={17} /> Integrations
+              {notConnected > 0 && (
+                <span className="ml-auto rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-gold">{notConnected}</span>
+              )}
             </Link>
-            <div className="flex items-center gap-1">
-              {user && <span className="mr-2 hidden text-sm text-neutral-400 sm:inline">{user.name}</span>}
-              <Link href="/onboarding?step=github" aria-label="Integrations" className="grid size-10 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white">
-                <HugeiconsIcon icon={Settings01Icon} size={18} />
-              </Link>
-              <button onClick={signOut} aria-label="Sign out" className="grid size-10 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white">
-                <HugeiconsIcon icon={Logout01Icon} size={18} />
-              </button>
-            </div>
+          </nav>
+          <div className="mt-auto flex items-center gap-2.5 rounded-xl border border-white/[0.07] px-3 py-2.5">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold/20 text-[11px] font-bold text-gold">{initials}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-white">{user?.name}</span>
+            <button onClick={signOut} aria-label="Sign out" className="grid size-8 shrink-0 place-items-center rounded-full text-neutral-500 transition-colors hover:bg-white/[0.06] hover:text-white">
+              <HugeiconsIcon icon={Logout01Icon} size={16} />
+            </button>
           </div>
-        </header>
+        </aside>
 
-        <main className="mx-auto max-w-6xl px-5 pb-24 pt-10">
+        <div id="top" className="min-w-0 flex-1">
+          <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-black/80 backdrop-blur-xl lg:hidden">
+            <div className="flex h-16 items-center justify-between px-5">
+              <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight">
+                <Logo size={28} />
+                agentcall
+              </Link>
+              <div className="flex items-center gap-1">
+                {user && <span className="mr-2 hidden text-sm text-neutral-400 sm:inline">{user.name}</span>}
+                <Link href="/onboarding?step=github" aria-label="Integrations" className="grid size-10 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white">
+                  <HugeiconsIcon icon={Settings01Icon} size={18} />
+                </Link>
+                <button onClick={signOut} aria-label="Sign out" className="grid size-10 place-items-center rounded-full text-neutral-400 transition-colors hover:bg-white/[0.06] hover:text-white">
+                  <HugeiconsIcon icon={Logout01Icon} size={18} />
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="mx-auto max-w-6xl px-5 pb-24 pt-8 lg:pt-10">
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }}>
             <h1 className="text-3xl font-semibold tracking-tight text-white">{user ? `Hi, ${user.name.split(" ")[0]}` : " "}</h1>
             <p className="mt-1.5 text-neutral-400">Your agents, what they&apos;re working on, and what they&apos;ve shipped.</p>
@@ -129,7 +180,7 @@ export function Dashboard() {
           {integrations && <IntegrationStrip integrations={integrations} />}
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px]">
-            <section>
+            <section id="tasks" className="scroll-mt-6">
               <SectionTitle>Tasks</SectionTitle>
               {bots?.some((b) => b.enabled) && (
                 <Composer
@@ -147,7 +198,7 @@ export function Dashboard() {
               />
             </section>
 
-            <section>
+            <section id="bots" className="scroll-mt-6">
               <SectionTitle
                 action={
                   <Button variant="secondary" className="h-9 px-3.5" onClick={() => setEditing("new")}>
@@ -178,6 +229,7 @@ export function Dashboard() {
             </section>
           </div>
         </main>
+        </div>
 
         <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "New bot" : "Edit bot"}>
           {editing && (
@@ -226,7 +278,7 @@ function IntegrationStrip({ integrations: i }: { integrations: Integrations }) {
     },
     { icon: <OpenCodeIcon size={18} />, name: "OpenCode", value: i.opencode.connected ? `••••${i.opencode.last4}` : null, href: "/onboarding?step=opencode" },
     {
-      icon: <HugeiconsIcon icon={CloudServerIcon} size={18} />,
+      icon: <InstaboxIcon size={18} />,
       name: "instabox",
       value: i.instabox.connected ? `${i.instabox.workspace} · ${i.instabox.plan}` : null,
       href: "/onboarding?step=instabox",
