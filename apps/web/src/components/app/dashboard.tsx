@@ -17,21 +17,30 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { GitHubIcon, InstaboxIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
+import { Badge } from "@/components/ui/badge";
+import { Button as UiButton } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { api, errorMessage, type Bot, type Integrations, type Task, type User } from "@/lib/api";
 import { BotForm, EMOJI, SKILLS } from "./bot-form";
 import { useRedirect } from "./onboarding";
-import { Banner, Button, Card, ease, Spinner, Textarea } from "./ui";
+import { Banner, Button, ease, Spinner, Textarea } from "./ui";
 
 const STATUS: Record<Task["status"], { label: string; chip: string }> = {
-  queued: { label: "Queued", chip: "border-white/[0.08] bg-white/[0.02] text-neutral-400" },
-  running: { label: "Working", chip: "border-white/15 bg-white/[0.05] text-white" },
-  succeeded: { label: "Done", chip: "border-white/[0.08] bg-white/[0.02] text-neutral-300" },
-  failed: { label: "Failed", chip: "border-red-400/20 bg-red-400/[0.06] text-red-300/90" },
-  cancelled: { label: "Cancelled", chip: "border-white/[0.06] bg-transparent text-neutral-500" },
+  queued: { label: "Queued", chip: "border-white/[0.07] bg-white/[0.03] text-neutral-400" },
+  running: { label: "Working", chip: "border-primary/25 bg-primary/10 text-primary" },
+  succeeded: { label: "Done", chip: "border-emerald-300/25 bg-emerald-300/10 text-emerald-200" },
+  failed: { label: "Failed", chip: "border-red-400/25 bg-red-400/10 text-red-300" },
+  cancelled: { label: "Cancelled", chip: "border-white/[0.07] bg-white/[0.03] text-neutral-400" },
 };
+
+const NEUTRAL_CHIP = "border-white/[0.07] bg-white/[0.03] text-[11px] font-normal text-neutral-400";
 
 function Stats({ bots, tasks }: { bots: Bot[] | null; tasks: Task[] | null }) {
   const items = [
@@ -45,17 +54,17 @@ function Stats({ bots, tasks }: { bots: Bot[] | null; tasks: Task[] | null }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease, delay: 0.1 }}
-      className="mt-8 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.06] sm:grid-cols-4"
+      className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4"
     >
       {items.map((it) => (
-        <div key={it.label} className="bg-[#0b0b0c] p-4">
+        <Card key={it.label} className="gap-0 rounded-xl p-4">
           {it.value === undefined ? (
-            <div className="h-6 w-10 animate-pulse rounded-md bg-white/[0.05]" />
+            <Skeleton className="h-6 w-10" />
           ) : (
-            <p className="text-xl font-semibold tracking-tight text-white">{it.value}</p>
+            <p className="text-xl font-semibold tracking-tight">{it.value}</p>
           )}
-          <p className="mt-1 text-[11px] font-medium tracking-wide text-neutral-500 uppercase">{it.label}</p>
-        </div>
+          <p className="mt-1 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{it.label}</p>
+        </Card>
       ))}
     </motion.div>
   );
@@ -115,35 +124,61 @@ export function Dashboard() {
     <MotionConfig reducedMotion="user">
       <div className="flex min-h-dvh">
         <aside className="sticky top-0 hidden h-dvh w-14 shrink-0 flex-col items-center border-r border-white/[0.06] py-4 lg:flex">
-          <Link href="/" aria-label="agentcall home" className="pb-5">
-            <Logo size={26} />
-          </Link>
-          <nav aria-label="Workspace" className="flex flex-col items-center gap-1.5">
-            <a href="#top" aria-label="Dashboard" title="Dashboard" className="grid size-9 place-items-center rounded-[10px] bg-white/[0.06] text-white">
-              <HugeiconsIcon icon={DashboardCircleIcon} size={17} />
-            </a>
-            <a href="#tasks" aria-label="Tasks" title="Tasks" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
-              <HugeiconsIcon icon={CheckmarkBadge01Icon} size={17} />
-            </a>
-            <a href="#bots" aria-label="Bots" title="Bots" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
-              <HugeiconsIcon icon={AiChat02Icon} size={17} />
-            </a>
-            <Link
-              href="/onboarding?step=github"
-              aria-label="Integrations"
-              title="Integrations"
-              className="relative grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white"
-            >
-              <HugeiconsIcon icon={Settings01Icon} size={17} />
-              {notConnected > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-white/70" />}
+          <TooltipProvider>
+            <Link href="/" aria-label="agentcall home" className="pb-5">
+              <Logo size={26} />
             </Link>
-          </nav>
-          <div className="mt-auto flex flex-col items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-full border border-white/[0.08] text-[10px] font-semibold text-neutral-300">{initials}</span>
-            <button onClick={signOut} aria-label="Sign out" title="Sign out" className="grid size-8 place-items-center rounded-full text-neutral-600 transition-colors hover:text-white">
-              <HugeiconsIcon icon={Logout01Icon} size={15} />
-            </button>
-          </div>
+            <nav aria-label="Workspace" className="flex flex-col items-center gap-1.5">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a href="#top" aria-label="Dashboard" className="grid size-9 place-items-center rounded-[10px] bg-white/[0.06] text-white">
+                    <HugeiconsIcon icon={DashboardCircleIcon} size={17} />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="right">Dashboard</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a href="#tasks" aria-label="Tasks" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
+                    <HugeiconsIcon icon={CheckmarkBadge01Icon} size={17} />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="right">Tasks</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <a href="#bots" aria-label="Bots" className="grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white">
+                    <HugeiconsIcon icon={AiChat02Icon} size={17} />
+                  </a>
+                </TooltipTrigger>
+                <TooltipContent side="right">Bots</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/onboarding?step=github"
+                    aria-label="Integrations"
+                    className="relative grid size-9 place-items-center rounded-[10px] text-neutral-500 transition-colors hover:bg-white/[0.04] hover:text-white"
+                  >
+                    <HugeiconsIcon icon={Settings01Icon} size={17} />
+                    {notConnected > 0 && <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-white/70" />}
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">Integrations</TooltipContent>
+              </Tooltip>
+            </nav>
+            <div className="mt-auto flex flex-col items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-full border border-white/[0.08] text-[10px] font-semibold text-neutral-300">{initials}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={signOut} aria-label="Sign out" className="grid size-8 place-items-center rounded-full text-neutral-600 transition-colors hover:text-white">
+                    <HugeiconsIcon icon={Logout01Icon} size={15} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Sign out</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </aside>
 
         <div id="top" className="min-w-0 flex-1">
@@ -197,16 +232,16 @@ export function Dashboard() {
           <section id="bots" className="mt-10 scroll-mt-6">
             <SectionTitle
               action={
-                <Button variant="secondary" className="h-9 px-3.5" onClick={() => setEditing("new")}>
+                <UiButton variant="outline" className="h-9 px-3.5" onClick={() => setEditing("new")}>
                   <HugeiconsIcon icon={Add01Icon} size={16} /> New bot
-                </Button>
+                </UiButton>
               }
             >
               Bots
             </SectionTitle>
             <div className="grid gap-3 sm:grid-cols-2">
                 {bots === null ? (
-                  [0, 1].map((i) => <div key={i} className="h-28 animate-pulse rounded-3xl bg-white/[0.03]" />)
+                  [0, 1].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)
                 ) : bots.length === 0 ? (
                   <Card className="p-6 text-sm text-neutral-400">No bots yet. Create one to start handing over work.</Card>
                 ) : (
@@ -292,7 +327,7 @@ function ConnectionsBar({ integrations: i }: { integrations: Integrations }) {
           </>
         );
         const cls =
-          "flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.02] px-3 py-1.5 text-xs transition-colors hover:border-white/15 hover:bg-white/[0.04]";
+          "flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-white/15 hover:bg-white/[0.04]";
         if ("action" in it && it.action) {
           return (
             <button key={it.name} onClick={it.action} className={cls}>
@@ -341,7 +376,7 @@ function Composer({ bots, ready, onCreated }: { bots: Bot[]; ready: boolean | nu
 
   if (!enabled.length) return null;
   return (
-    <Card className="mb-4 p-4">
+    <Card className="mb-4 gap-0 p-4">
       <form onSubmit={submit} className="space-y-3">
         <Textarea
           label="Hand over a task"
@@ -371,9 +406,13 @@ function Composer({ bots, ready, onCreated }: { bots: Bot[]; ready: boolean | nu
               </button>
             ))}
           </div>
-          <Button type="submit" loading={saving} disabled={!prompt.trim() || !botId || ready === false} className="h-9 px-4">
-            Send <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
-          </Button>
+          <UiButton
+            type="submit"
+            disabled={!prompt.trim() || !botId || ready === false || saving}
+            className="h-9 rounded-full px-4"
+          >
+            {saving ? <Spinner /> : <>Send <HugeiconsIcon icon={ArrowRight01Icon} size={15} /></>}
+          </UiButton>
         </div>
         {ready === false && (
           <Banner tone="info">
@@ -402,10 +441,10 @@ function TaskList({
   onNewBot?: () => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  if (tasks === null) return <div className="h-40 animate-pulse rounded-3xl bg-white/[0.03]" />;
+  if (tasks === null) return <Skeleton className="h-40 rounded-2xl" />;
   if (!tasks.length) {
     return (
-      <Card className="flex flex-col items-center px-6 py-14 text-center">
+      <Card className="items-center gap-0 px-6 py-14 text-center">
         <Logo size={44} />
         <p className="mt-6 font-medium text-white">Nothing yet</p>
         {hasComposer ? (
@@ -414,9 +453,9 @@ function TaskList({
           <>
             <p className="mt-1 max-w-xs text-sm text-neutral-500">Create a bot to start handing over work. Its progress shows up here.</p>
             {onNewBot && (
-              <Button variant="secondary" className="mt-5 h-9 px-4" onClick={onNewBot}>
+              <UiButton variant="outline" className="mt-5 h-9 px-4" onClick={onNewBot}>
                 <HugeiconsIcon icon={Add01Icon} size={15} /> New bot
-              </Button>
+              </UiButton>
             )}
           </>
         )}
@@ -424,8 +463,8 @@ function TaskList({
     );
   }
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/[0.07] bg-white/[0.015]">
-      <div className="flex items-center gap-4 border-b border-white/[0.06] px-5 py-2.5 text-[11px] font-medium tracking-wider text-neutral-600 uppercase">
+    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+      <div className="flex items-center gap-4 border-b border-border px-5 py-2.5 text-[11px] font-medium tracking-wider text-muted-foreground uppercase">
         <span className="flex-1">Task</span>
         <span className="hidden w-24 sm:block">Status</span>
         <span className="hidden w-24 md:block">Bot</span>
@@ -448,7 +487,7 @@ function TaskList({
                   <span className="mr-2">{EMOJI[bot?.emoji ?? ""] ?? "🤖"}</span>
                   {t.prompt}
                 </span>
-                <span className={`hidden w-24 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] font-medium sm:block ${s.chip}`}>{s.label}</span>
+                <Badge variant="outline" className={`${s.chip} hidden w-24 shrink-0 text-center text-[11px] sm:block`}>{s.label}</Badge>
                 <span className="hidden w-24 shrink-0 truncate text-xs text-neutral-500 md:block">{bot?.name ?? "Bot"}</span>
                 <span className="hidden w-14 shrink-0 text-xs text-neutral-500 sm:block">{t.source === "slack" ? "Slack" : "Dash"}</span>
                 <span className="hidden w-16 shrink-0 text-right text-xs text-neutral-500 sm:block">{ago(t.createdAt)}</span>
@@ -509,9 +548,9 @@ function TaskDetail({ task, onChange }: { task: Task; onChange: () => Promise<vo
         <div className="flex gap-2">
           {task.result?.prUrl && (
             <a href={task.result.prUrl} target="_blank" rel="noreferrer">
-              <Button variant="secondary" className="h-9 px-3.5">
+              <UiButton variant="outline" className="h-9 px-3.5">
                 <HugeiconsIcon icon={GitPullRequestIcon} size={15} /> Pull request <HugeiconsIcon icon={ArrowUpRight01Icon} size={14} />
-              </Button>
+              </UiButton>
             </a>
           )}
           {(task.status === "queued" || task.status === "running") && (
@@ -554,21 +593,26 @@ function BotCard({ bot, onEdit, onChange }: { bot: Bot; onEdit: () => void; onCh
   };
   return (
     <motion.div layout initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.97 }} transition={{ duration: 0.3, ease }}>
-      <Card className={`p-5 transition-opacity ${bot.enabled ? "" : "opacity-60"}`}>
+      <Card className={`gap-0 p-5 transition-opacity ${bot.enabled ? "" : "opacity-60"}`}>
         <div className="flex items-start gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-xl">{EMOJI[bot.emoji] ?? "🤖"}</span>
           <div className="min-w-0 flex-1">
-            <p className="font-medium text-white">{bot.name}</p>
-            <p className="mt-0.5 line-clamp-2 text-[13px] text-neutral-400">{bot.purpose}</p>
+            <p className="font-medium">{bot.name}</p>
+            <p className="mt-0.5 line-clamp-2 text-[13px] text-muted-foreground">{bot.purpose}</p>
           </div>
-          <Switch on={bot.enabled} disabled={busy} onToggle={toggle} label={`${bot.enabled ? "Pause" : "Resume"} ${bot.name}`} />
+          <Switch
+            checked={bot.enabled}
+            onCheckedChange={() => void toggle()}
+            disabled={busy}
+            aria-label={`${bot.enabled ? "Pause" : "Resume"} ${bot.name}`}
+          />
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-500">
-          <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono">{bot.model}</span>
+          <Badge variant="outline" className={`${NEUTRAL_CHIP} font-mono`}>{bot.model}</Badge>
           {bot.repos.slice(0, 2).map((r) => (
-            <span key={r} className="rounded-full border border-white/10 px-2 py-0.5">
+            <Badge key={r} variant="outline" className={NEUTRAL_CHIP}>
               {r}
-            </span>
+            </Badge>
           ))}
           {bot.repos.length > 2 && <span>+{bot.repos.length - 2}</span>}
           <span className="ml-auto flex gap-1">
@@ -589,9 +633,9 @@ function BotCard({ bot, onEdit, onChange }: { bot: Bot; onEdit: () => void; onCh
         {bot.skills.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {bot.skills.map((id) => (
-              <span key={id} className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[11px] text-neutral-300">
+              <Badge key={id} variant="outline" className={NEUTRAL_CHIP}>
                 {SKILLS.find((s) => s.id === id)?.label ?? id}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
@@ -600,82 +644,16 @@ function BotCard({ bot, onEdit, onChange }: { bot: Bot; onEdit: () => void; onCh
   );
 }
 
-function Switch({ on, onToggle, disabled, label }: { on: boolean; onToggle: () => void; disabled?: boolean; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={on}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onToggle}
-      className={`relative h-6 w-10 shrink-0 rounded-full transition-colors duration-300 ${on ? "bg-white/30" : "bg-white/[0.08]"}`}
-    >
-      <motion.span
-        className="absolute top-0.5 size-5 rounded-full bg-white shadow"
-        animate={{ left: on ? 18 : 2 }}
-        transition={{ type: "spring", stiffness: 600, damping: 34 }}
-      />
-    </button>
-  );
-}
-
 function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
-  const panel = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const focusables = () =>
-      Array.from(panel.current?.querySelectorAll<HTMLElement>("button, [href], input, textarea, select") ?? []).filter(
-        (el) => !el.hasAttribute("disabled"),
-      );
-    focusables()[0]?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Tab") {
-        const items = focusables();
-        if (!items.length) return;
-        const idx = items.indexOf(document.activeElement as HTMLElement);
-        if (e.shiftKey && idx <= 0) {
-          e.preventDefault();
-          items[items.length - 1]!.focus();
-        } else if (!e.shiftKey && (idx === -1 || idx === items.length - 1)) {
-          e.preventDefault();
-          items[0]!.focus();
-        }
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-      opener?.focus?.();
-    };
-  }, [open, onClose]);
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal aria-label={title}>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-          <motion.div
-            ref={panel}
-            initial={{ opacity: 0, y: 40, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 40, scale: 0.98 }}
-            transition={{ duration: 0.35, ease }}
-            className="relative max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-neutral-950 p-6 sm:rounded-3xl sm:p-8"
-          >
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">{title}</h2>
-              <button onClick={onClose} aria-label="Close" className="grid size-9 place-items-center rounded-full text-neutral-400 hover:bg-white/[0.06] hover:text-white">
-                <HugeiconsIcon icon={Cancel01Icon} size={18} />
-              </button>
-            </div>
-            {children}
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[92dvh] gap-6 overflow-y-auto rounded-xl border-border bg-card p-6 sm:p-8">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
+        </DialogHeader>
+        {children}
+      </DialogContent>
+    </Dialog>
   );
 }
 

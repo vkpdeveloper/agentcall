@@ -2,14 +2,19 @@
 
 import { Key01Icon, ViewIcon, ViewOffSlashIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { cn } from "cn";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useId, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
 import { SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { api, ApiError, errorMessage, type User } from "@/lib/api";
-import { Banner, Button, Card, ease, Input } from "./ui";
+import { Banner, FieldError, ease, Spinner } from "./ui";
 
 type Mode = "login" | "signup";
 
@@ -53,16 +58,16 @@ const PERKS: Record<Mode, { icon: ReactNode; title: string; body: string }[]> = 
 /** The brand rail of the two-panel auth layout. Hidden on small screens. */
 function BrandRail({ mode }: { mode: Mode }) {
   return (
-    <aside className="relative hidden w-[560px] shrink-0 flex-col justify-between border-r border-white/[0.06] bg-[linear-gradient(180deg,rgb(246_195_91_/_0.04),transparent_40%)] p-14 lg:flex">
+    <aside className="relative hidden w-[560px] shrink-0 flex-col justify-between border-r border-border p-14 lg:flex">
       <div>
-        <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight text-white">
+        <Link href="/" className="flex items-center gap-2.5 text-sm font-semibold tracking-tight text-foreground">
           <Logo size={32} />
           agentcall
         </Link>
-        <h1 className="mt-8 max-w-[420px] text-[34px] font-semibold leading-[1.15] tracking-tight text-white">
+        <h1 className="mt-8 max-w-[420px] text-[34px] font-semibold leading-[1.15] tracking-tight text-foreground">
           {mode === "login" ? "Agents that work like teammates." : "Your agents are a few steps away."}
         </h1>
-        <p className="mt-3 max-w-[380px] text-[15px] leading-relaxed text-neutral-400">
+        <p className="mt-3 max-w-[380px] text-[15px] leading-relaxed text-muted-foreground">
           {mode === "login"
             ? "AI agents join your Slack, take client issues, record the repro and open the pull request."
             : "Create an account, connect your tools, and the first bot is working in about five minutes."}
@@ -70,21 +75,47 @@ function BrandRail({ mode }: { mode: Mode }) {
         <div className="mt-9 space-y-6">
           {PERKS[mode].map((perk) => (
             <div key={perk.title} className="flex items-start gap-4">
-              <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-gold/25 bg-gold/10 text-gold">
+              <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-border bg-card text-primary">
                 {perk.icon}
               </span>
               <div>
-                <p className="text-sm font-medium text-white">{perk.title}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-neutral-400">{perk.body}</p>
+                <p className="text-sm font-medium text-foreground">{perk.title}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{perk.body}</p>
               </div>
             </div>
           ))}
         </div>
       </div>
-      <p className="text-xs leading-relaxed text-neutral-500">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         Keys encrypted with AES-256 · Agents run in your instabox cloud · Open source
       </p>
     </aside>
+  );
+}
+
+type FieldProps = {
+  label: string;
+  hint?: string;
+  error?: string;
+  trailing?: ReactNode;
+} & Omit<ComponentProps<typeof Input>, "id">;
+
+function Field({ label, hint, error, trailing, ...props }: FieldProps) {
+  const autoId = useId();
+  return (
+    <div>
+      <div className="mb-1.5 flex items-baseline justify-between">
+        <Label htmlFor={autoId} className="items-baseline">
+          {label}
+        </Label>
+        {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
+      </div>
+      <div className="relative">
+        <Input id={autoId} aria-invalid={Boolean(error)} className={cn(trailing && "pr-10")} {...props} />
+        {trailing && <div className="absolute inset-y-0 right-1 flex items-center">{trailing}</div>}
+      </div>
+      <FieldError message={error} />
+    </div>
   );
 }
 
@@ -132,15 +163,15 @@ export function AuthForm({ mode }: { mode: Mode }) {
             agentcall
           </Link>
           <Card className="p-7 sm:p-8">
-            <h2 className="text-2xl font-semibold tracking-tight text-white">{signup ? "Create your account" : "Welcome back"}</h2>
-            <p className="mt-1.5 text-sm text-neutral-400">
+            <h2 className="text-2xl font-semibold tracking-tight text-foreground">{signup ? "Create your account" : "Welcome back"}</h2>
+            <p className="mt-1.5 text-sm text-muted-foreground">
               {signup ? "Name, email, password. That's the whole form." : "Sign in to your agents."}
             </p>
           <form onSubmit={submit} className="mt-7 space-y-4" noValidate>
             {signup && (
-              <Input label="Name" name="name" autoComplete="name" placeholder="Ada Lovelace" required error={error?.field("name")} autoFocus />
+              <Field label="Name" name="name" autoComplete="name" placeholder="Ada Lovelace" required error={error?.field("name")} autoFocus />
             )}
-            <Input
+            <Field
               label="Email"
               name="email"
               type="email"
@@ -150,7 +181,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
               error={error?.field("email")}
               autoFocus={!signup}
             />
-            <Input
+            <Field
               label="Password"
               name="password"
               type={show ? "text" : "password"}
@@ -164,7 +195,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 <button
                   type="button"
                   onClick={() => setShow((s) => !s)}
-                  className="grid size-8 place-items-center rounded-lg text-neutral-500 transition-colors hover:text-white"
+                  className="grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
                   aria-label={show ? "Hide password" : "Show password"}
                 >
                   <HugeiconsIcon icon={show ? ViewOffSlashIcon : ViewIcon} size={18} />
@@ -172,16 +203,19 @@ export function AuthForm({ mode }: { mode: Mode }) {
               }
             />
             <Banner>{banner}</Banner>
-            <Button type="submit" loading={loading} className="mt-2 w-full">
-              {signup ? "Create account" : "Sign in"}
+            <Button type="submit" disabled={loading} size="lg" className="relative mt-2 w-full">
+              <span className={`inline-flex items-center gap-2 transition-opacity ${loading ? "opacity-0" : ""}`}>
+                {signup ? "Create account" : "Sign in"}
+              </span>
+              {loading && <Spinner size={16} className="absolute" />}
             </Button>
           </form>
         </Card>
-        <p className="mt-6 text-center text-sm text-neutral-500">
+        <p className="mt-6 text-center text-sm text-muted-foreground">
           {signup ? "Already have an account? " : "New to agentcall? "}
           <Link
             href={`${signup ? "/login" : "/signup"}${params.get("next") ? `?next=${encodeURIComponent(params.get("next")!)}` : ""}`}
-            className="font-medium text-neutral-200 transition-colors hover:text-gold"
+            className="font-medium text-foreground transition-colors hover:text-primary"
           >
             {signup ? "Sign in" : "Create an account"}
           </Link>

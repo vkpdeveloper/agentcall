@@ -5,7 +5,13 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type FormEvent } from "react";
 import { api, ApiError, errorMessage, type Bot, type Model, type Repo } from "@/lib/api";
-import { Banner, Button, ease, Input, Textarea } from "./ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Banner, FieldError, ease, Spinner } from "./ui";
 
 export const EMOJI: Record<string, string> = {
   ":robot_face:": "🤖",
@@ -106,17 +112,18 @@ export function BotForm({
           <p className="mb-2 text-[13px] font-medium text-neutral-300">Start from a template</p>
           <div className="grid gap-2 sm:grid-cols-3">
             {TEMPLATES.map((t) => (
-              <motion.button
-                key={t.name}
-                type="button"
-                whileTap={{ scale: 0.97 }}
-                onClick={() => setDraft((d) => ({ ...d, ...t }))}
-                className="rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-left transition-colors hover:border-gold/40 hover:bg-gold/[0.04]"
-              >
-                <span className="text-lg">{EMOJI[t.emoji]}</span>
-                <span className="mt-1 block text-sm font-medium text-white">{t.name}</span>
-                <span className="mt-0.5 line-clamp-2 block text-xs text-neutral-500">{t.purpose}</span>
-              </motion.button>
+              <Card key={t.name} className="overflow-hidden p-0 transition-colors hover:border-primary/30">
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setDraft((d) => ({ ...d, ...t }))}
+                  className="w-full rounded-xl p-3 text-left"
+                >
+                  <span className="text-lg">{EMOJI[t.emoji]}</span>
+                  <span className="mt-1 block text-sm font-medium text-foreground">{t.name}</span>
+                  <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{t.purpose}</span>
+                </motion.button>
+              </Card>
             ))}
           </div>
         </div>
@@ -124,30 +131,45 @@ export function BotForm({
 
       <div className="flex items-start gap-3">
         <div>
-          <p className="mb-1.5 text-[13px] font-medium text-neutral-300">Icon</p>
+          <Label className="mb-1.5 text-[13px] font-medium text-neutral-300">Icon</Label>
           <EmojiPicker value={draft.emoji} onChange={(v) => set("emoji", v)} />
         </div>
-        <Input
-          label="Name"
-          className="flex-1"
-          value={draft.name}
-          onChange={(e) => set("name", e.target.value)}
-          placeholder="Sentinel"
-          maxLength={40}
-          error={error?.field("name")}
-          hint="Mention it by name in Slack"
-        />
+        <div className="flex-1">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <Label htmlFor="bot-name" className="text-[13px] font-medium text-neutral-300">
+              Name
+            </Label>
+            <span className="text-xs text-muted-foreground">Mention it by name in Slack</span>
+          </div>
+          <Input
+            id="bot-name"
+            value={draft.name}
+            onChange={(e) => set("name", e.target.value)}
+            placeholder="Sentinel"
+            maxLength={40}
+            aria-invalid={Boolean(error?.field("name"))}
+            className="h-11 rounded-xl"
+          />
+          <FieldError message={error?.field("name")} />
+        </div>
       </div>
 
-      <Textarea
-        label="What is it for?"
-        value={draft.purpose}
-        onChange={(e) => set("purpose", e.target.value)}
-        placeholder="Triage security reports from clients and patch them."
-        rows={3}
-        maxLength={500}
-        error={error?.field("purpose")}
-      />
+      <div>
+        <Label htmlFor="bot-purpose" className="mb-1.5 text-[13px] font-medium text-neutral-300">
+          What is it for?
+        </Label>
+        <Textarea
+          id="bot-purpose"
+          value={draft.purpose}
+          onChange={(e) => set("purpose", e.target.value)}
+          placeholder="Triage security reports from clients and patch them."
+          rows={3}
+          maxLength={500}
+          aria-invalid={Boolean(error?.field("purpose"))}
+          className="min-h-24 rounded-xl"
+        />
+        <FieldError message={error?.field("purpose")} />
+      </div>
 
       <div>
         <p className="mb-2 text-[13px] font-medium text-neutral-300">Kind of work</p>
@@ -161,22 +183,22 @@ export function BotForm({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-[13px] font-medium text-neutral-300" htmlFor="bot-model">
+        <Label htmlFor="bot-model" className="mb-1.5 text-[13px] font-medium text-neutral-300">
           Model
-        </label>
+        </Label>
         <div className="relative">
           <select
             id="bot-model"
             value={draft.model}
             onChange={(e) => set("model", e.target.value)}
-            className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.03] px-3.5 text-[15px] text-white outline-none transition focus:border-gold/60 focus:shadow-[0_0_0_4px_rgb(246_195_91_/_0.12)]"
+            className="h-11 w-full appearance-none rounded-xl border border-border bg-white/[0.03] px-3.5 text-[15px] text-foreground outline-none transition focus:border-ring"
           >
             {!models?.some((m) => m.id === draft.model) && <option value={draft.model}>{draft.model}</option>}
             {models
               ?.slice()
               .sort((a, b) => Number(b.free) - Number(a.free) || a.name.localeCompare(b.name))
               .map((m) => (
-                <option key={m.id} value={m.id} className="bg-neutral-950">
+                <option key={m.id} value={m.id}>
                   {m.name}
                   {m.free ? " · free" : ""}
                 </option>
@@ -185,10 +207,10 @@ export function BotForm({
           <HugeiconsIcon
             icon={ArrowRight01Icon}
             size={16}
-            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rotate-90 text-neutral-500"
+            className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 rotate-90 text-muted-foreground"
           />
         </div>
-        <p className="mt-1.5 text-xs text-neutral-500">Runs through your OpenCode account.</p>
+        <p className="mt-1.5 text-xs text-muted-foreground">Runs through your OpenCode account.</p>
       </div>
 
       {githubConnected && (
@@ -197,11 +219,11 @@ export function BotForm({
           {repos === null ? (
             <div className="flex gap-2">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="h-8 w-28 animate-pulse rounded-full bg-white/[0.05]" />
+                <Skeleton key={i} className="h-8 w-28 rounded-full" />
               ))}
             </div>
           ) : repos.length === 0 ? (
-            <p className="text-sm text-neutral-500">The agentcall app can't see any repositories yet.</p>
+            <p className="text-sm text-muted-foreground">The agentcall app can't see any repositories yet.</p>
           ) : (
             <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
               {repos.map((r) => (
@@ -218,7 +240,7 @@ export function BotForm({
         <button
           type="button"
           onClick={() => setAdvanced((a) => !a)}
-          className="text-[13px] font-medium text-neutral-400 transition-colors hover:text-white"
+          className="text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           {advanced ? "Hide" : "Add"} instructions
         </button>
@@ -231,14 +253,17 @@ export function BotForm({
               transition={{ duration: 0.3, ease }}
               className="overflow-hidden"
             >
+              <Label htmlFor="bot-instructions" className="mb-1.5 pt-3 text-[13px] font-medium text-neutral-300">
+                Instructions
+              </Label>
               <Textarea
-                label="Instructions"
-                className="pt-3"
+                id="bot-instructions"
                 value={draft.instructions}
                 onChange={(e) => set("instructions", e.target.value)}
                 placeholder="Always add a regression test. Never touch the billing module."
                 rows={4}
                 maxLength={4000}
+                className="rounded-xl"
               />
             </motion.div>
           )}
@@ -246,7 +271,8 @@ export function BotForm({
       </div>
 
       <Banner>{banner}</Banner>
-      <Button type="submit" loading={saving} className="w-full">
+      <Button type="submit" disabled={saving} className="h-11 w-full rounded-xl">
+        {saving && <Spinner size={16} />}
         {submitLabel}
       </Button>
     </form>
@@ -261,7 +287,9 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
       onClick={onClick}
       aria-pressed={active}
       className={`h-8 rounded-full border px-3.5 text-[13px] transition-colors duration-200 ${
-        active ? "border-gold/60 bg-gold/[0.12] text-gold" : "border-white/10 text-neutral-400 hover:border-white/25 hover:text-white"
+        active
+          ? "border-primary/25 bg-primary/10 text-primary"
+          : "border-white/[0.07] bg-white/[0.03] text-neutral-400 hover:border-white/25 hover:text-foreground"
       }`}
     >
       {children}
@@ -278,7 +306,7 @@ function EmojiPicker({ value, onChange }: { value: string; onChange: (v: string)
         onClick={() => setOpen((o) => !o)}
         aria-label="Choose an icon"
         aria-expanded={open}
-        className="grid size-11 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-xl transition hover:border-white/25"
+        className="grid size-11 place-items-center rounded-xl border border-border bg-card text-xl transition hover:border-white/25"
       >
         {EMOJI[value] ?? "🤖"}
       </button>
@@ -289,7 +317,7 @@ function EmojiPicker({ value, onChange }: { value: string; onChange: (v: string)
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -4 }}
             transition={{ duration: 0.16, ease }}
-            className="absolute left-0 top-12 z-20 grid w-48 origin-top-left grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-neutral-950 p-2 shadow-2xl"
+            className="absolute left-0 top-12 z-20 grid w-48 origin-top-left grid-cols-4 gap-1 rounded-xl border border-border bg-popover p-2"
           >
             {Object.entries(EMOJI).map(([code, glyph]) => (
               <button
@@ -299,7 +327,7 @@ function EmojiPicker({ value, onChange }: { value: string; onChange: (v: string)
                   onChange(code);
                   setOpen(false);
                 }}
-                className={`grid size-10 place-items-center rounded-xl text-xl transition-colors hover:bg-white/10 ${code === value ? "bg-white/10" : ""}`}
+                className={`grid size-10 place-items-center rounded-lg text-xl transition-colors hover:bg-accent ${code === value ? "bg-accent" : ""}`}
               >
                 {glyph}
               </button>

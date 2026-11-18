@@ -9,17 +9,25 @@ import {
   SquareLock02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { AnimatePresence, motion, MotionConfig } from "motion/react";
+import type { VariantProps } from "class-variance-authority";
+import { cn } from "cn";
+import { AnimatePresence, motion, MotionConfig, type HTMLMotionProps } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { GitHubIcon, InstaboxIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
+import { useCallback, useEffect, useId, useMemo, useState, type ComponentProps, type FormEvent, type ReactNode } from "react";
+import { GitHubIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { api, errorMessage, type Bot, type Channel, type OnboardingStatus } from "@/lib/api";
 import { Backdrop } from "./auth-form";
 import { BotForm } from "./bot-form";
 import { RETURN_KEY } from "./oauth-callback";
-import { Banner, Button, Card, Check, ease, Input, Spinner } from "./ui";
+import { Banner, Check, ease, FieldError, Spinner } from "./ui";
 
 type StepId = "github" | "slack" | "opencode" | "instabox" | "bot" | "done";
 
@@ -32,6 +40,25 @@ const STEPS: { id: Exclude<StepId, "done">; label: string; optional: boolean }[]
 ];
 
 const SKIP_KEY = "agentcall:onboarding-skipped";
+
+const NEUTRAL_CHIP = "border-white/[0.07] bg-white/[0.03] text-neutral-400";
+
+type ActionButtonProps = Omit<HTMLMotionProps<"button">, "children"> & VariantProps<typeof buttonVariants> & { loading?: boolean; children?: ReactNode };
+
+/** shadcn Button with the loading affordance and tap animation the steps rely on. */
+function ActionButton({ loading, disabled, variant, size, className, children, ...props }: ActionButtonProps) {
+  return (
+    <motion.button
+      whileTap={disabled || loading ? undefined : { scale: 0.97 }}
+      disabled={disabled || loading}
+      className={cn(buttonVariants({ variant, size }), "relative", className)}
+      {...props}
+    >
+      <span className={`inline-flex items-center gap-2 transition-opacity ${loading ? "opacity-0" : ""}`}>{children}</span>
+      {loading && <Spinner className="absolute" />}
+    </motion.button>
+  );
+}
 
 function isDone(id: StepId, s: OnboardingStatus) {
   switch (id) {
@@ -109,7 +136,7 @@ export function Onboarding() {
               agentcall
             </Link>
             {step && step !== "done" && (
-              <span className="font-mono text-xs text-neutral-500">
+              <span className="font-mono text-xs text-muted-foreground">
                 Step {index + 1} of {STEPS.length}
               </span>
             )}
@@ -117,18 +144,14 @@ export function Onboarding() {
 
           {status && step && <Progress index={index} status={status} />}
 
-          {status && step && (
-            <div className="mt-8 hidden md:mt-10 md:block">
-              <Stepper current={step} status={status} onPick={(id) => go(id)} />
-            </div>
-          )}
+          <div className="mt-8 grid gap-10 md:mt-14 md:grid-cols-[220px_1fr] md:gap-14">
+            {status && step ? <Rail current={step} status={status} onPick={(id) => go(id)} /> : <div className="hidden md:block" />}
 
-          <div className="mt-8 md:mt-10">
-          <div className="relative mx-auto w-full max-w-[560px]">
+            <div className="relative mx-auto w-full max-w-[560px] md:mx-0">
               {loadError ? (
                 <Banner>{loadError}</Banner>
               ) : !status || !step ? (
-                <div className="grid h-80 place-items-center text-neutral-500">
+                <div className="grid h-80 place-items-center text-muted-foreground">
                   <Spinner size={22} />
                 </div>
               ) : (
@@ -169,9 +192,9 @@ function Progress({ index, status }: { index: number; status: OnboardingStatus }
   return (
     <div className="mt-6 flex gap-1.5 md:hidden" aria-hidden>
       {STEPS.map((s, i) => (
-        <div key={s.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+        <div key={s.id} className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.03]">
           <motion.div
-            className={`h-full rounded-full ${isDone(s.id, status) ? "bg-gold" : "bg-white/60"}`}
+            className={`h-full rounded-full ${isDone(s.id, status) ? "bg-emerald-300" : "bg-primary"}`}
             initial={false}
             animate={{ width: i < index || isDone(s.id, status) ? "100%" : i === index ? "45%" : "0%" }}
             transition={{ duration: 0.5, ease }}
@@ -182,45 +205,42 @@ function Progress({ index, status }: { index: number; status: OnboardingStatus }
   );
 }
 
-function Stepper({ current, status, onPick }: { current: StepId; status: OnboardingStatus; onPick: (id: StepId) => void }) {
+function Rail({ current, status, onPick }: { current: StepId; status: OnboardingStatus; onPick: (id: StepId) => void }) {
   return (
-    <nav aria-label="Setup steps">
-      <ol className="flex">
-        {STEPS.map((s, i) => {
+    <nav aria-label="Setup steps" className="hidden md:block">
+      <ol className="relative space-y-1">
+        {STEPS.map((s) => {
           const done = isDone(s.id, status);
           const active = s.id === current;
           return (
-            <li key={s.id} className="relative flex-1 text-center">
-              {i > 0 && (
-                <span
-                  aria-hidden
-                  className={`absolute right-[calc(50%+22px)] left-[22px] top-[21px] h-0.5 ${
-                    isDone(STEPS[i - 1]!.id, status) ? "bg-gold/50" : "bg-white/[0.08]"
-                  }`}
-                />
-              )}
+            <li key={s.id}>
               <button
                 type="button"
-                aria-label={`${s.label} — step ${i + 1} of ${STEPS.length}${s.optional ? ", optional" : ""}`}
-                aria-current={active ? "step" : undefined}
                 onClick={() => onPick(s.id)}
-                className="group w-full"
+                className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
               >
+                {active && (
+                  <motion.span
+                    layoutId="rail-active"
+                    className="absolute inset-0 rounded-xl border border-primary/25 bg-primary/10"
+                    transition={{ type: "spring", stiffness: 420, damping: 36 }}
+                  />
+                )}
                 <span
-                  className={`relative mx-auto grid size-11 place-items-center rounded-full border text-[13px] font-medium transition-colors ${
+                  className={`relative grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-medium transition-colors ${
                     done
-                      ? "border-gold/50 bg-gold/15 text-gold"
+                      ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-200"
                       : active
-                        ? "border-gold bg-gold text-black"
-                        : "border-white/12 bg-white/[0.03] text-neutral-400 group-hover:border-white/25"
+                        ? "border-primary/25 bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground"
                   }`}
                 >
-                  {done ? <Check size={15} /> : i + 1}
+                  {done ? <Check size={13} /> : STEPS.findIndex((x) => x.id === s.id) + 1}
                 </span>
-                <span className={`mt-2.5 block text-[13px] ${active ? "font-medium text-white" : "text-neutral-500 group-hover:text-neutral-300"}`}>
-                  {s.label}
-                  {s.optional && !done && <span className="block text-[10px] tracking-wider text-neutral-600 uppercase">optional</span>}
-                </span>
+                <span className="relative">{s.label}</span>
+                {s.optional && !done && <span className="relative ml-auto text-[11px] text-muted-foreground">optional</span>}
               </button>
             </li>
           );
@@ -244,19 +264,19 @@ function StepShell({
   footer?: ReactNode;
 }) {
   return (
-    <Card className="p-6 sm:p-8">
+    <Card className="gap-0 p-6 sm:p-8">
       <motion.div
         initial={{ scale: 0.6, opacity: 0, rotate: -8 }}
         animate={{ scale: 1, opacity: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 380, damping: 22, delay: 0.08 }}
-        className="grid size-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-white"
+        className="grid size-12 place-items-center rounded-2xl border border-border bg-card text-foreground"
       >
         {icon}
       </motion.div>
-      <h1 className="mt-5 text-2xl font-semibold tracking-tight text-white">{title}</h1>
-      <div className="mt-2 text-pretty text-[15px] leading-relaxed text-neutral-400">{description}</div>
+      <h1 className="mt-5 text-2xl font-semibold tracking-tight text-foreground">{title}</h1>
+      <div className="mt-2 text-pretty text-[15px] leading-relaxed text-muted-foreground">{description}</div>
       {children && <div className="mt-7">{children}</div>}
-      {footer && <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-5">{footer}</div>}
+      {footer && <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5">{footer}</div>}
     </Card>
   );
 }
@@ -264,9 +284,9 @@ function StepShell({
 function BackButton({ onBack }: { onBack?: () => void }) {
   if (!onBack) return <span />;
   return (
-    <Button variant="ghost" type="button" onClick={onBack} className="-ml-3 px-3">
+    <ActionButton variant="ghost" type="button" onClick={onBack} className="-ml-3 px-3">
       <HugeiconsIcon icon={ArrowLeft01Icon} size={16} /> Back
-    </Button>
+    </ActionButton>
   );
 }
 
@@ -279,9 +299,9 @@ function Points({ items }: { items: string[] }) {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease, delay: 0.12 + i * 0.06 }}
-          className="flex gap-3 text-sm text-neutral-300"
+          className="flex gap-3 text-sm text-muted-foreground"
         >
-          <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-gold/12 text-gold">
+          <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
             <Check size={11} />
           </span>
           {t}
@@ -297,14 +317,14 @@ function Connected({ children, onChange }: { children: ReactNode; onChange?: () 
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, ease }}
-      className="flex items-center gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] px-4 py-3"
+      className="flex items-center gap-3 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 px-4 py-3"
     >
-      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-emerald-400/15 text-emerald-300">
+      <span className="grid size-7 shrink-0 place-items-center rounded-full bg-emerald-300/15 text-emerald-200">
         <Check size={14} />
       </span>
-      <div className="min-w-0 flex-1 text-sm text-emerald-100">{children}</div>
+      <div className="min-w-0 flex-1 text-sm text-emerald-200">{children}</div>
       {onChange && (
-        <button type="button" onClick={onChange} className="text-[13px] font-medium text-neutral-400 hover:text-white">
+        <button type="button" onClick={onChange} className="text-[13px] font-medium text-muted-foreground hover:text-foreground">
           Change
         </button>
       )}
@@ -345,13 +365,13 @@ function GitHubStep({ status, onNext, onSkip }: { status: OnboardingStatus; onNe
         <>
           <span />
           {gh.connected ? (
-            <Button onClick={onNext}>
+            <ActionButton onClick={onNext}>
               Continue <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-            </Button>
+            </ActionButton>
           ) : (
-            <Button variant="ghost" onClick={onSkip}>
+            <ActionButton variant="ghost" onClick={onSkip}>
               Skip for now
-            </Button>
+            </ActionButton>
           )}
         </>
       }
@@ -367,13 +387,13 @@ function GitHubStep({ status, onNext, onSkip }: { status: OnboardingStatus; onNe
         <Banner>{params.get("error") === "github" ? "That GitHub connection didn't go through. Try again." : install.error}</Banner>
         {gh.connected ? (
           <Connected onChange={gh.available ? install.start : undefined}>
-            Connected to <span className="font-medium text-white">{gh.account?.login}</span>
+            Connected to <span className="font-medium text-foreground">{gh.account?.login}</span>
             <span className="text-emerald-200/60"> · {gh.account?.repositorySelection === "all" ? "all repositories" : "selected repositories"}</span>
           </Connected>
         ) : gh.available ? (
-          <Button onClick={install.start} loading={install.loading} className="w-full">
+          <ActionButton onClick={install.start} loading={install.loading} className="w-full">
             <GitHubIcon size={16} /> Install GitHub App
-          </Button>
+          </ActionButton>
         ) : (
           <Banner tone="info">GitHub isn&apos;t configured on this server yet. You can connect it later from the dashboard.</Banner>
         )}
@@ -415,13 +435,13 @@ function SlackStep({
         <>
           <BackButton onBack={onBack} />
           {slack.channel && !picking ? (
-            <Button onClick={onNext}>
+            <ActionButton onClick={onNext}>
               Continue <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-            </Button>
+            </ActionButton>
           ) : (
-            <Button variant="ghost" onClick={onSkip}>
+            <ActionButton variant="ghost" onClick={onSkip}>
               Skip for now
-            </Button>
+            </ActionButton>
           )}
         </>
       }
@@ -446,13 +466,13 @@ function SlackStep({
           <Banner>{params.get("error") === "slack" ? "That Slack connection didn't go through. Try again." : install.error}</Banner>
           {slack.channel ? (
             <Connected onChange={() => setPicking(true)}>
-              <span className="font-medium text-white">#{slack.channel.name}</span>
+              <span className="font-medium text-foreground">#{slack.channel.name}</span>
               <span className="text-emerald-200/60"> in {slack.team?.name}</span>
             </Connected>
           ) : slack.available ? (
-            <Button onClick={install.start} loading={install.loading} className="w-full">
+            <ActionButton onClick={install.start} loading={install.loading} className="w-full">
               <SlackIcon size={16} /> Add to Slack
-            </Button>
+            </ActionButton>
           ) : (
             <Banner tone="info">Slack isn&apos;t configured on this server yet. You can connect it later from the dashboard.</Banner>
           )}
@@ -499,20 +519,20 @@ function ChannelPicker({ current, onPicked }: { current?: string; onPicked: () =
   return (
     <div className="space-y-4">
       <div className="relative">
-        <HugeiconsIcon icon={Search01Icon} size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
-        <input
+        <HugeiconsIcon icon={Search01Icon} size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search channels"
           aria-label="Search channels"
-          className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.03] pl-10 pr-3.5 text-[15px] text-white outline-none placeholder:text-neutral-600 focus:border-gold/60 focus:shadow-[0_0_0_4px_rgb(246_195_91_/_0.12)]"
+          className="h-11 rounded-xl pl-10 pr-3.5 text-[15px] md:text-[15px]"
         />
       </div>
-      <div role="radiogroup" aria-label="Channels" className="max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-white/[0.06] p-1.5">
+      <div role="radiogroup" aria-label="Channels" className="max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-border p-1.5">
         {channels === null ? (
-          [0, 1, 2, 3].map((i) => <div key={i} className="h-11 animate-pulse rounded-xl bg-white/[0.04]" />)
+          [0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-11 rounded-xl" />)
         ) : shown.length === 0 ? (
-          <p className="px-3 py-6 text-center text-sm text-neutral-500">No channels match.</p>
+          <p className="px-3 py-6 text-center text-sm text-muted-foreground">No channels match.</p>
         ) : (
           shown.map((c) => {
             const active = c.id === selected;
@@ -524,30 +544,30 @@ function ChannelPicker({ current, onPicked }: { current?: string; onPicked: () =
                 aria-checked={active}
                 onClick={() => setSelected(c.id)}
                 className={`relative flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors ${
-                  active ? "text-white" : "text-neutral-400 hover:bg-white/[0.03] hover:text-white"
+                  active ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"
                 }`}
               >
                 {active && (
                   <motion.span
                     layoutId="channel-active"
-                    className="absolute inset-0 rounded-xl border border-gold/40 bg-gold/[0.08]"
+                    className="absolute inset-0 rounded-xl border border-primary/25 bg-primary/10"
                     transition={{ type: "spring", stiffness: 500, damping: 38 }}
                   />
                 )}
-                <span className="relative w-4 text-center text-neutral-500">
+                <span className="relative w-4 text-center text-muted-foreground">
                   {c.isPrivate ? <HugeiconsIcon icon={SquareLock02Icon} size={14} /> : "#"}
                 </span>
                 <span className="relative flex-1 truncate">{c.name}</span>
-                {c.isPrivate && !c.isMember && <span className="relative text-[11px] text-neutral-600">invite needed</span>}
+                {c.isPrivate && !c.isMember && <span className="relative text-[11px] text-muted-foreground">invite needed</span>}
               </button>
             );
           })
         )}
       </div>
       <Banner>{error}</Banner>
-      <Button onClick={save} loading={saving} disabled={!selected} className="w-full">
+      <ActionButton onClick={save} loading={saving} disabled={!selected} className="w-full">
         Use this channel
-      </Button>
+      </ActionButton>
     </div>
   );
 }
@@ -566,6 +586,7 @@ function KeyForm({
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const inputId = useId();
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -580,25 +601,32 @@ function KeyForm({
   };
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
-      <Input
-        label={label}
-        type="password"
-        autoComplete="off"
-        spellCheck={false}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder}
-        error={error}
-        hint={
-          <span className="inline-flex items-center gap-1">
+      <div className="space-y-1.5">
+        <div className="flex items-baseline justify-between">
+          <Label htmlFor={inputId} className="text-[13px] text-foreground">
+            {label}
+          </Label>
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <HugeiconsIcon icon={SquareLock02Icon} size={12} /> Encrypted with AES-256
           </span>
-        }
-        autoFocus
-      />
-      <Button type="submit" loading={saving} disabled={value.trim().length < 8} className="w-full">
+        </div>
+        <Input
+          id={inputId}
+          type="password"
+          autoComplete="off"
+          spellCheck={false}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={placeholder}
+          aria-invalid={Boolean(error)}
+          className="h-11 rounded-xl text-[15px]"
+          autoFocus
+        />
+        <FieldError message={error} />
+      </div>
+      <ActionButton type="submit" loading={saving} disabled={value.trim().length < 8} className="w-full">
         {saving ? "Checking" : "Verify and save"}
-      </Button>
+      </ActionButton>
     </form>
   );
 }
@@ -623,7 +651,7 @@ function OpenCodeStep({
       description={
         <>
           OpenCode is the agent behind every bot. Your key unlocks your models and subscription. Get one at{" "}
-          <a href="https://opencode.ai/auth" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-neutral-200 underline decoration-white/20 underline-offset-4 hover:text-gold">
+          <a href="https://opencode.ai/auth" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-foreground underline decoration-border underline-offset-4 hover:text-primary">
             opencode.ai <HugeiconsIcon icon={LinkSquare02Icon} size={13} />
           </a>
           .
@@ -633,16 +661,16 @@ function OpenCodeStep({
         <>
           <BackButton onBack={onBack} />
           {oc.connected && !replacing && (
-            <Button onClick={onNext}>
+            <ActionButton onClick={onNext}>
               Continue <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-            </Button>
+            </ActionButton>
           )}
         </>
       }
     >
       {oc.connected && !replacing ? (
         <Connected onChange={() => setReplacing(true)}>
-          Key ending in <span className="font-mono text-white">••••{oc.last4}</span> verified
+          Key ending in <span className="font-mono text-foreground">••••{oc.last4}</span> verified
         </Connected>
       ) : (
         <KeyForm path="/integrations/opencode" label="API key" placeholder="sk-…" onSaved={onSaved} />
@@ -666,13 +694,13 @@ function InstaboxStep({
   const ib = status.instabox;
   return (
     <StepShell
-      icon={<InstaboxIcon size={24} />}
+      icon={<HugeiconsIcon icon={Key01Icon} size={22} />}
       title="Connect instabox"
       description={
         <>
           Agents work in a cloud machine on your instabox account: they clone, test the product in a real browser and record
           repros. Create a key at{" "}
-          <a href="https://instabox.sh" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-neutral-200 underline decoration-white/20 underline-offset-4 hover:text-gold">
+          <a href="https://instabox.sh" target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-foreground underline decoration-border underline-offset-4 hover:text-primary">
             instabox.sh <HugeiconsIcon icon={LinkSquare02Icon} size={13} />
           </a>
           .
@@ -682,9 +710,9 @@ function InstaboxStep({
         <>
           <BackButton onBack={onBack} />
           {ib.connected && !replacing && (
-            <Button onClick={onNext}>
+            <ActionButton onClick={onNext}>
               Continue <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-            </Button>
+            </ActionButton>
           )}
         </>
       }
@@ -692,7 +720,7 @@ function InstaboxStep({
       <div className="space-y-5">
         {ib.connected && !replacing ? (
           <Connected onChange={() => setReplacing(true)}>
-            <span className="font-medium text-white">{ib.workspace}</span>
+            <span className="font-medium text-foreground">{ib.workspace}</span>
             <span className="text-emerald-200/60">
               {" "}
               · {ib.plan} plan · ••••{ib.last4}
@@ -701,7 +729,7 @@ function InstaboxStep({
         ) : (
           <KeyForm path="/integrations/instabox" label="API key" placeholder="ibk_…" onSaved={onSaved} />
         )}
-        <p className="text-[13px] leading-relaxed text-neutral-500">
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
           On the free plan agentcall keeps a single machine for you. It sleeps when idle and wakes for each task, and tasks
           run one at a time.
         </p>
@@ -731,16 +759,16 @@ function BotStep({
         <>
           <BackButton onBack={onBack} />
           {status.bot.created && (
-            <Button variant="ghost" onClick={onNext}>
+            <ActionButton variant="ghost" onClick={onNext}>
               I already have one
-            </Button>
+            </ActionButton>
           )}
         </>
       }
     >
       {created ? (
         <Connected>
-          <span className="font-medium text-white">{created.name}</span> is ready
+          <span className="font-medium text-foreground">{created.name}</span> is ready
         </Connected>
       ) : (
         <BotForm
@@ -755,12 +783,25 @@ function BotStep({
   );
 }
 
+function reviewMeta(id: Exclude<StepId, "done">, s: OnboardingStatus): string | null {
+  switch (id) {
+    case "github":
+      return s.github.account?.login ?? null;
+    case "slack":
+      return s.slack.channel ? `#${s.slack.channel.name}` : null;
+    case "opencode":
+      return s.opencode.last4 ? `••••${s.opencode.last4}` : null;
+    case "instabox":
+      return s.instabox.workspace;
+    case "bot":
+      return null;
+  }
+}
+
 function DoneStep({ status, onFix }: { status: OnboardingStatus; onFix: (id: StepId) => void }) {
   const router = useRouter();
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string>();
-  const [skipped, setSkipped] = useState<string[]>([]);
-  useEffect(() => setSkipped(JSON.parse(sessionStorage.getItem(SKIP_KEY) ?? "[]")), []);
   const missing = STEPS.filter((s) => !s.optional && !isDone(s.id, status));
 
   const finish = async () => {
@@ -775,114 +816,60 @@ function DoneStep({ status, onFix }: { status: OnboardingStatus; onFix: (id: Ste
     }
   };
 
-  const rows = [
-    {
-      id: "github" as const,
-      icon: <GitHubIcon size={16} />,
-      label: "GitHub",
-      why: "Repos your agents can work on",
-      done: status.github.connected,
-      pill: status.github.connected && status.github.account ? `Connected · ${status.github.account.login}` : null,
-    },
-    {
-      id: "slack" as const,
-      icon: <SlackIcon size={16} />,
-      label: "Slack",
-      why: "The channel your bots answer in",
-      done: Boolean(status.slack.channel),
-      pill: status.slack.channel ? `Connected · #${status.slack.channel.name}` : null,
-    },
-    {
-      id: "opencode" as const,
-      icon: <OpenCodeIcon size={16} />,
-      label: "OpenCode",
-      why: "The agent engine and your models",
-      done: status.opencode.connected,
-      pill: status.opencode.connected ? "Connected" : null,
-    },
-    {
-      id: "instabox" as const,
-      icon: <InstaboxIcon size={16} />,
-      label: "instabox",
-      why: "Cloud machines your agents run in",
-      done: status.instabox.connected,
-      pill: status.instabox.connected ? `Connected · ${status.instabox.workspace}` : null,
-    },
-    {
-      id: "bot" as const,
-      icon: <span className="text-[15px]">🤖</span>,
-      label: "First bot",
-      why: "Ready to be mentioned in Slack",
-      done: status.bot.created,
-      pill: status.bot.created ? "Created" : null,
-    },
-  ];
-
   return (
-    <Card className="p-7 text-center sm:p-10">
+    <Card className="gap-0 p-8 text-center sm:p-12">
       <motion.div
-        initial={{ scale: 0.5, opacity: 0 }}
+        initial={{ scale: 0.4, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 16 }}
-        className="mx-auto grid size-16 place-items-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+        transition={{ type: "spring", stiffness: 160, damping: 16 }}
       >
-        <Check size={26} />
+        <Logo size={112} />
       </motion.div>
-      <h1 className="mt-5 text-3xl font-semibold tracking-tight text-white">
+      <h1 className="mt-10 text-3xl font-semibold tracking-tight text-foreground">
         {missing.length ? "Almost there" : "Your team just grew"}
       </h1>
-      <p className="mx-auto mt-3 max-w-sm text-pretty text-neutral-400">
+      <p className="mt-3 max-w-sm text-pretty text-muted-foreground">
         {missing.length
-          ? `${missing.length === 1 ? "One connection is" : `${missing.length} connections are`} still needed before agents can pick up work. Everything else is ready.`
+          ? "A couple of things are still needed before agents can pick up work."
           : status.slack.channel
             ? `Mention @agentcall in #${status.slack.channel.name} to hand over the first task.`
             : "Hand over the first task from your dashboard."}
       </p>
-      <div className="mt-7 space-y-2 text-left">
-        {rows.map((r, i) => (
-          <motion.div
-            key={r.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, ease, delay: 0.15 + i * 0.06 }}
-            className="flex items-center gap-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.015] px-4 py-3.5"
-          >
-            <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-white/[0.08] bg-white/[0.04]">
-              {r.icon}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-medium text-white">{r.label}</span>
-              <span className="block text-xs text-neutral-500">{r.why}</span>
-            </span>
-            {r.done && r.pill ? (
-              <span className="rounded-full border border-emerald-400/35 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300">
-                {r.pill}
+      <Card className="mt-8 w-full max-w-xs gap-0 divide-y divide-border overflow-hidden py-0 text-left">
+        {STEPS.map((s, i) => {
+          const done = isDone(s.id, status);
+          return (
+            <motion.button
+              key={s.id}
+              type="button"
+              onClick={() => !done && onFix(s.id)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease, delay: 0.25 + i * 0.07 }}
+              className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm ${done ? "text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground"}`}
+            >
+              <span className={`grid size-5 shrink-0 place-items-center rounded-full ${done ? "bg-emerald-300/10 text-emerald-200" : "border border-border"}`}>
+                {done && <Check size={11} />}
               </span>
-            ) : (
-              <>
-                <span className="rounded-full border border-gold/35 bg-gold/[0.08] px-2.5 py-1 text-[11px] text-gold">
-                  {skipped.includes(r.id) ? "Skipped" : "Not set up"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onFix(r.id)}
-                  className="text-xs font-medium text-gold transition-colors hover:text-white"
-                >
-                  Connect →
-                </button>
-              </>
-            )}
-          </motion.div>
-        ))}
-      </div>
+              {s.label}
+              {done ? (
+                reviewMeta(s.id, status) && (
+                  <Badge className={`ml-auto font-normal ${NEUTRAL_CHIP}`}>{reviewMeta(s.id, status)}</Badge>
+                )
+              ) : (
+                <Badge className={`ml-auto font-normal ${s.optional ? NEUTRAL_CHIP : "border-red-400/25 bg-red-400/10 text-red-300"}`}>
+                  {s.optional ? "Skipped" : "Needed"}
+                </Badge>
+              )}
+            </motion.button>
+          );
+        })}
+      </Card>
       <Banner>{error}</Banner>
-      <div className="mt-7 flex flex-col items-center gap-2.5">
-        <Button onClick={missing.length ? () => onFix(missing[0]!.id) : finish} loading={finishing} className="min-w-52">
-          {missing.length ? `Finish ${missing[0]!.label}` : "Open dashboard"}
-          <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-        </Button>
-        <p className="text-xs text-neutral-500">Or open the dashboard and connect the rest later.</p>
-      </div>
+      <ActionButton onClick={missing.length ? () => onFix(missing[0]!.id) : finish} loading={finishing} className="mt-8 min-w-48">
+        {missing.length ? `Finish ${missing[0]!.label}` : "Open dashboard"}
+        <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+      </ActionButton>
     </Card>
   );
 }
