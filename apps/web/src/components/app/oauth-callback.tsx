@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { GitHubIcon, SlackIcon } from "@/components/brand-icons";
 import { api, errorMessage } from "@/lib/api";
 import { Backdrop } from "./auth-form";
-import { Button, Card, Check, ease, Spinner } from "./ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Check, ease, Spinner } from "./ui";
 
 type Provider = "github" | "slack";
 
@@ -71,8 +73,8 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
         transition={{ duration: 0.5, ease }}
         className="relative w-full max-w-sm"
       >
-        <Card className="flex flex-col items-center p-8 text-center">
-          <div className="relative grid size-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04]">
+        <Card className="flex flex-col items-center gap-0 p-8 text-center">
+          <div className="relative grid size-14 place-items-center rounded-2xl border border-border bg-card">
             <Icon size={26} />
             <span
               className={`absolute -bottom-1.5 -right-1.5 grid size-6 place-items-center rounded-full border-2 border-black ${
@@ -90,10 +92,10 @@ export function OAuthCallback({ provider }: { provider: Provider }) {
               <p className="mt-2 text-sm leading-relaxed text-neutral-400">{state.message}</p>
               <div className="mt-7 grid w-full gap-2.5">
                 <Link href={`/onboarding?step=${provider}`} className="w-full">
-                  <Button className="w-full justify-center">Start again from setup</Button>
+                  <Button className="h-11 w-full rounded-xl">Start again from setup</Button>
                 </Link>
                 <Link href="/dashboard" className="w-full">
-                  <Button variant="ghost" className="w-full justify-center">
+                  <Button variant="ghost" className="h-11 w-full rounded-xl">
                     Back to dashboard
                   </Button>
                 </Link>
