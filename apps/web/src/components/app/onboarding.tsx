@@ -182,13 +182,15 @@ function Rail({ current, status, onPick }: { current: StepId; status: Onboarding
   return (
     <nav aria-label="Setup steps" className="hidden md:block">
       <ol className="relative space-y-1">
-        {STEPS.map((s) => {
+        {STEPS.map((s, i) => {
           const done = isDone(s.id, status);
           const active = s.id === current;
           return (
             <li key={s.id}>
               <button
                 type="button"
+                aria-label={`${s.label} — step ${i + 1} of ${STEPS.length}${s.optional ? ", optional" : ""}`}
+                aria-current={active ? "step" : undefined}
                 onClick={() => onPick(s.id)}
                 className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
                   active ? "text-white" : "text-neutral-500 hover:text-neutral-200"
@@ -748,6 +750,8 @@ function DoneStep({ status, onFix }: { status: OnboardingStatus; onFix: (id: Ste
   const router = useRouter();
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string>();
+  const [skipped, setSkipped] = useState<string[]>([]);
+  useEffect(() => setSkipped(JSON.parse(sessionStorage.getItem(SKIP_KEY) ?? "[]")), []);
   const missing = STEPS.filter((s) => !s.optional && !isDone(s.id, status));
 
   const finish = async () => {
@@ -798,7 +802,10 @@ function DoneStep({ status, onFix }: { status: OnboardingStatus; onFix: (id: Ste
                 {done && <Check size={11} />}
               </span>
               {s.label}
-              {!done && <span className="ml-auto text-xs">{s.optional ? "Skipped" : "Needed"}</span>}
+              {s.label}
+              {!done && (
+                <span className="ml-auto text-xs">{skipped.includes(s.id) ? "Skipped" : s.optional ? "Not set up" : "Needed"}</span>
+              )}
             </motion.button>
           );
         })}

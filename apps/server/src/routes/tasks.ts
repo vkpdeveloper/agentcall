@@ -5,6 +5,7 @@ import { bots, taskEvents, tasks, type Task } from "@agentcall/db";
 import type { Deps } from "../deps";
 import { requireUser, type AuthVars } from "../lib/auth";
 import { ApiError, errors, ok, validate } from "../lib/http";
+import { getApiKey } from "../services/keys";
 import { cancelTask } from "../worker/tasks";
 
 export const publicTask = (t: Task) => ({
@@ -79,6 +80,12 @@ export function taskRoutes(deps: Deps) {
           .limit(1);
         if (!bot) throw errors.notFound("Bot");
         if (!bot.enabled) throw errors.precondition("bot_disabled", `${bot.name} is paused. Turn it on first.`);
+        // Preflight the keys the run needs, so a task never queues just to fail
+        // in the worker seconds later.
+        if (!(await getApiKey(deps, user.id, "opencode")))
+          throw errors.precondition("opencode_missing", "Add your OpenCode API key in setup before handing over tasks.");
+        if (!(await getApiKey(deps, user.id, "instabox")))
+          throw errors.precondition("instabox_missing", "Add your instabox API key in setup before handing over tasks.");
         const [task] = await deps.db
           .insert(tasks)
           .values({

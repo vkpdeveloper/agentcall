@@ -5,6 +5,7 @@ import {
   ArrowRight01Icon,
   ArrowUpRight01Icon,
   Cancel01Icon,
+  CloudServerIcon,
   Delete02Icon,
   GitPullRequestIcon,
   Logout01Icon,
@@ -14,7 +15,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { GitHubIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
 import { api, errorMessage, type Bot, type Integrations, type Task, type User } from "@/lib/api";
@@ -101,8 +102,20 @@ export function Dashboard() {
           <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_380px]">
             <section>
               <SectionTitle>Tasks</SectionTitle>
-              {bots && bots.length > 0 && <Composer bots={bots} onCreated={(t) => setTasks((ts) => [t, ...(ts ?? [])])} />}
-              <TaskList tasks={tasks} bots={bots ?? []} onChange={loadTasks} />
+              {bots?.some((b) => b.enabled) && (
+                <Composer
+                  bots={bots}
+                  ready={integrations ? integrations.opencode.connected && integrations.instabox.connected : null}
+                  onCreated={(t) => setTasks((ts) => [t, ...(ts ?? [])])}
+                />
+              )}
+              <TaskList
+                tasks={tasks}
+                bots={bots ?? []}
+                onChange={loadTasks}
+                hasComposer={bots?.some((b) => b.enabled) ?? true}
+                onNewBot={() => setEditing("new")}
+              />
             </section>
 
             <section>
@@ -184,7 +197,7 @@ function IntegrationStrip({ integrations: i }: { integrations: Integrations }) {
     },
     { icon: <OpenCodeIcon size={18} />, name: "OpenCode", value: i.opencode.connected ? `••••${i.opencode.last4}` : null, href: "/onboarding?step=opencode" },
     {
-      icon: <span className="font-mono text-xs font-bold">ib</span>,
+      icon: <HugeiconsIcon icon={CloudServerIcon} size={18} />,
       name: "instabox",
       value: i.instabox.connected ? `${i.instabox.workspace} · ${i.instabox.plan}` : null,
       href: "/onboarding?step=instabox",
@@ -229,7 +242,7 @@ function IntegrationStrip({ integrations: i }: { integrations: Integrations }) {
   );
 }
 
-function Composer({ bots, onCreated }: { bots: Bot[]; onCreated: (t: Task) => void }) {
+function Composer({ bots, ready, onCreated }: { bots: Bot[]; ready: boolean | null; onCreated: (t: Task) => void }) {
   const enabled = bots.filter((b) => b.enabled);
   const [botId, setBotId] = useState(enabled[0]?.id ?? "");
   const [prompt, setPrompt] = useState("");
@@ -283,17 +296,36 @@ function Composer({ bots, onCreated }: { bots: Bot[]; onCreated: (t: Task) => vo
               </button>
             ))}
           </div>
-          <Button type="submit" loading={saving} disabled={!prompt.trim() || !botId} className="h-9 px-4">
+          <Button type="submit" loading={saving} disabled={!prompt.trim() || !botId || ready === false} className="h-9 px-4">
             Send <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
           </Button>
         </div>
+        {ready === false && (
+          <Banner tone="info">
+            Add your <Link href="/onboarding?step=opencode" className="underline underline-offset-2">OpenCode</Link> and{" "}
+            <Link href="/onboarding?step=instabox" className="underline underline-offset-2">instabox</Link> keys before handing over
+            tasks.
+          </Banner>
+        )}
         <Banner>{error}</Banner>
       </form>
     </Card>
   );
 }
 
-function TaskList({ tasks, bots, onChange }: { tasks: Task[] | null; bots: Bot[]; onChange: () => Promise<void> }) {
+function TaskList({
+  tasks,
+  bots,
+  onChange,
+  hasComposer = true,
+  onNewBot,
+}: {
+  tasks: Task[] | null;
+  bots: Bot[];
+  onChange: () => Promise<void>;
+  hasComposer?: boolean;
+  onNewBot?: () => void;
+}) {
   const [open, setOpen] = useState<string | null>(null);
   if (tasks === null) return <div className="h-40 animate-pulse rounded-3xl bg-white/[0.03]" />;
   if (!tasks.length) {
@@ -301,7 +333,18 @@ function TaskList({ tasks, bots, onChange }: { tasks: Task[] | null; bots: Bot[]
       <Card className="flex flex-col items-center px-6 py-14 text-center">
         <Logo size={44} />
         <p className="mt-6 font-medium text-white">Nothing yet</p>
-        <p className="mt-1 max-w-xs text-sm text-neutral-500">Mention a bot in Slack or hand over a task above. Its progress shows up here.</p>
+        {hasComposer ? (
+          <p className="mt-1 max-w-xs text-sm text-neutral-500">Mention a bot in Slack or hand over a task above. Its progress shows up here.</p>
+        ) : (
+          <>
+            <p className="mt-1 max-w-xs text-sm text-neutral-500">Create a bot to start handing over work. Its progress shows up here.</p>
+            {onNewBot && (
+              <Button variant="secondary" className="mt-5 h-9 px-4" onClick={onNewBot}>
+                <HugeiconsIcon icon={Add01Icon} size={15} /> New bot
+              </Button>
+            )}
+          </>
+        )}
       </Card>
     );
   }
@@ -313,7 +356,11 @@ function TaskList({ tasks, bots, onChange }: { tasks: Task[] | null; bots: Bot[]
           const s = STATUS[t.status];
           return (
             <motion.div key={t.id} layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} transition={{ duration: 0.3, ease }}>
-              <button onClick={() => setOpen(open === t.id ? null : t.id)} className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]">
+              <button
+                onClick={() => setOpen(open === t.id ? null : t.id)}
+                aria-expanded={open === t.id}
+                className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]"
+              >
                 <span className="mt-0.5 text-lg leading-none">{EMOJI[bot?.emoji ?? ""] ?? "🤖"}</span>
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 text-sm text-neutral-200">{t.prompt}</p>
@@ -329,6 +376,11 @@ function TaskList({ tasks, bots, onChange }: { tasks: Task[] | null; bots: Bot[]
                   </p>
                 </div>
                 {t.result?.prUrl && <HugeiconsIcon icon={GitPullRequestIcon} size={16} className="mt-0.5 text-emerald-300" />}
+                <HugeiconsIcon
+                  icon={ArrowRight01Icon}
+                  size={14}
+                  className={`mt-0.5 shrink-0 text-neutral-600 transition-transform duration-200 ${open === t.id ? "rotate-90" : ""}`}
+                />
               </button>
               <AnimatePresence initial={false}>
                 {open === t.id && <TaskDetail task={t} onChange={onChange} />}
@@ -481,14 +533,36 @@ function Switch({ on, onToggle, disabled, label }: { on: boolean; onToggle: () =
 }
 
 function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusables = () =>
+      Array.from(panel.current?.querySelectorAll<HTMLElement>("button, [href], input, textarea, select") ?? []).filter(
+        (el) => !el.hasAttribute("disabled"),
+      );
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "Tab") {
+        const items = focusables();
+        if (!items.length) return;
+        const idx = items.indexOf(document.activeElement as HTMLElement);
+        if (e.shiftKey && idx <= 0) {
+          e.preventDefault();
+          items[items.length - 1]!.focus();
+        } else if (!e.shiftKey && (idx === -1 || idx === items.length - 1)) {
+          e.preventDefault();
+          items[0]!.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
     return () => {
-      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
+      opener?.focus?.();
     };
   }, [open, onClose]);
   return (
@@ -497,6 +571,7 @@ function Sheet({ open, onClose, title, children }: { open: boolean; onClose: () 
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal aria-label={title}>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
           <motion.div
+            ref={panel}
             initial={{ opacity: 0, y: 40, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.98 }}
