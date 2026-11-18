@@ -13,7 +13,7 @@ import { AnimatePresence, motion, MotionConfig } from "motion/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { GitHubIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
+import { GitHubIcon, InstaboxIcon, OpenCodeIcon, SlackIcon } from "@/components/brand-icons";
 import { Logo } from "@/components/logo";
 import { api, errorMessage, type Bot, type Channel, type OnboardingStatus } from "@/lib/api";
 import { Backdrop } from "./auth-form";
@@ -117,10 +117,14 @@ export function Onboarding() {
 
           {status && step && <Progress index={index} status={status} />}
 
-          <div className="mt-8 grid gap-10 md:mt-14 md:grid-cols-[220px_1fr] md:gap-14">
-            {status && step ? <Rail current={step} status={status} onPick={(id) => go(id)} /> : <div className="hidden md:block" />}
+          {status && step && (
+            <div className="mt-8 hidden md:mt-10 md:block">
+              <Stepper current={step} status={status} onPick={(id) => go(id)} />
+            </div>
+          )}
 
-            <div className="relative mx-auto w-full max-w-[560px] md:mx-0">
+          <div className="mt-8 md:mt-10">
+          <div className="relative mx-auto w-full max-w-[560px]">
               {loadError ? (
                 <Banner>{loadError}</Banner>
               ) : !status || !step ? (
@@ -178,40 +182,45 @@ function Progress({ index, status }: { index: number; status: OnboardingStatus }
   );
 }
 
-function Rail({ current, status, onPick }: { current: StepId; status: OnboardingStatus; onPick: (id: StepId) => void }) {
+function Stepper({ current, status, onPick }: { current: StepId; status: OnboardingStatus; onPick: (id: StepId) => void }) {
   return (
-    <nav aria-label="Setup steps" className="hidden md:block">
-      <ol className="relative space-y-1">
+    <nav aria-label="Setup steps">
+      <ol className="flex">
         {STEPS.map((s, i) => {
           const done = isDone(s.id, status);
           const active = s.id === current;
           return (
-            <li key={s.id}>
+            <li key={s.id} className="relative flex-1 text-center">
+              {i > 0 && (
+                <span
+                  aria-hidden
+                  className={`absolute right-[calc(50%+22px)] left-[22px] top-[21px] h-0.5 ${
+                    isDone(STEPS[i - 1]!.id, status) ? "bg-gold/50" : "bg-white/[0.08]"
+                  }`}
+                />
+              )}
               <button
                 type="button"
                 aria-label={`${s.label} — step ${i + 1} of ${STEPS.length}${s.optional ? ", optional" : ""}`}
                 aria-current={active ? "step" : undefined}
                 onClick={() => onPick(s.id)}
-                className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors ${
-                  active ? "text-white" : "text-neutral-500 hover:text-neutral-200"
-                }`}
+                className="group w-full"
               >
-                {active && (
-                  <motion.span
-                    layoutId="rail-active"
-                    className="absolute inset-0 rounded-xl border border-white/10 bg-white/[0.04]"
-                    transition={{ type: "spring", stiffness: 420, damping: 36 }}
-                  />
-                )}
                 <span
-                  className={`relative grid size-6 shrink-0 place-items-center rounded-full border text-[11px] font-medium transition-colors ${
-                    done ? "border-gold/60 bg-gold/15 text-gold" : active ? "border-white/40 text-white" : "border-white/15"
+                  className={`relative mx-auto grid size-11 place-items-center rounded-full border text-[13px] font-medium transition-colors ${
+                    done
+                      ? "border-gold/50 bg-gold/15 text-gold"
+                      : active
+                        ? "border-gold bg-gold text-black"
+                        : "border-white/12 bg-white/[0.03] text-neutral-400 group-hover:border-white/25"
                   }`}
                 >
-                  {done ? <Check size={13} /> : STEPS.findIndex((x) => x.id === s.id) + 1}
+                  {done ? <Check size={15} /> : i + 1}
                 </span>
-                <span className="relative">{s.label}</span>
-                {s.optional && !done && <span className="relative ml-auto text-[11px] text-neutral-600">optional</span>}
+                <span className={`mt-2.5 block text-[13px] ${active ? "font-medium text-white" : "text-neutral-500 group-hover:text-neutral-300"}`}>
+                  {s.label}
+                  {s.optional && !done && <span className="block text-[10px] tracking-wider text-neutral-600 uppercase">optional</span>}
+                </span>
               </button>
             </li>
           );
@@ -657,7 +666,7 @@ function InstaboxStep({
   const ib = status.instabox;
   return (
     <StepShell
-      icon={<HugeiconsIcon icon={Key01Icon} size={22} />}
+      icon={<InstaboxIcon size={24} />}
       title="Connect instabox"
       description={
         <>
@@ -766,55 +775,114 @@ function DoneStep({ status, onFix }: { status: OnboardingStatus; onFix: (id: Ste
     }
   };
 
+  const rows = [
+    {
+      id: "github" as const,
+      icon: <GitHubIcon size={16} />,
+      label: "GitHub",
+      why: "Repos your agents can work on",
+      done: status.github.connected,
+      pill: status.github.connected && status.github.account ? `Connected · ${status.github.account.login}` : null,
+    },
+    {
+      id: "slack" as const,
+      icon: <SlackIcon size={16} />,
+      label: "Slack",
+      why: "The channel your bots answer in",
+      done: Boolean(status.slack.channel),
+      pill: status.slack.channel ? `Connected · #${status.slack.channel.name}` : null,
+    },
+    {
+      id: "opencode" as const,
+      icon: <OpenCodeIcon size={16} />,
+      label: "OpenCode",
+      why: "The agent engine and your models",
+      done: status.opencode.connected,
+      pill: status.opencode.connected ? "Connected" : null,
+    },
+    {
+      id: "instabox" as const,
+      icon: <InstaboxIcon size={16} />,
+      label: "instabox",
+      why: "Cloud machines your agents run in",
+      done: status.instabox.connected,
+      pill: status.instabox.connected ? `Connected · ${status.instabox.workspace}` : null,
+    },
+    {
+      id: "bot" as const,
+      icon: <span className="text-[15px]">🤖</span>,
+      label: "First bot",
+      why: "Ready to be mentioned in Slack",
+      done: status.bot.created,
+      pill: status.bot.created ? "Created" : null,
+    },
+  ];
+
   return (
-    <Card className="flex flex-col items-center p-8 text-center sm:p-12">
+    <Card className="p-7 text-center sm:p-10">
       <motion.div
-        initial={{ scale: 0.4, opacity: 0 }}
+        initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 160, damping: 16 }}
+        transition={{ type: "spring", stiffness: 200, damping: 16 }}
+        className="mx-auto grid size-16 place-items-center rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
       >
-        <Logo size={112} className="drop-shadow-[0_0_40px_rgb(246_195_91_/_0.35)]" />
+        <Check size={26} />
       </motion.div>
-      <h1 className="mt-10 text-3xl font-semibold tracking-tight text-white">
+      <h1 className="mt-5 text-3xl font-semibold tracking-tight text-white">
         {missing.length ? "Almost there" : "Your team just grew"}
       </h1>
-      <p className="mt-3 max-w-sm text-pretty text-neutral-400">
+      <p className="mx-auto mt-3 max-w-sm text-pretty text-neutral-400">
         {missing.length
-          ? "A couple of things are still needed before agents can pick up work."
+          ? `${missing.length === 1 ? "One connection is" : `${missing.length} connections are`} still needed before agents can pick up work. Everything else is ready.`
           : status.slack.channel
             ? `Mention @agentcall in #${status.slack.channel.name} to hand over the first task.`
             : "Hand over the first task from your dashboard."}
       </p>
-      <div className="mt-8 w-full max-w-xs space-y-2">
-        {STEPS.map((s, i) => {
-          const done = isDone(s.id, status);
-          return (
-            <motion.button
-              key={s.id}
-              type="button"
-              onClick={() => !done && onFix(s.id)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease, delay: 0.25 + i * 0.07 }}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm ${done ? "text-neutral-300" : "text-neutral-500 hover:bg-white/[0.04] hover:text-white"}`}
-            >
-              <span className={`grid size-5 place-items-center rounded-full ${done ? "bg-gold/15 text-gold" : "border border-white/15"}`}>
-                {done && <Check size={11} />}
+      <div className="mt-7 space-y-2 text-left">
+        {rows.map((r, i) => (
+          <motion.div
+            key={r.id}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease, delay: 0.15 + i * 0.06 }}
+            className="flex items-center gap-3.5 rounded-2xl border border-white/[0.07] bg-white/[0.015] px-4 py-3.5"
+          >
+            <span className="grid size-[34px] shrink-0 place-items-center rounded-[10px] border border-white/[0.08] bg-white/[0.04]">
+              {r.icon}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-white">{r.label}</span>
+              <span className="block text-xs text-neutral-500">{r.why}</span>
+            </span>
+            {r.done && r.pill ? (
+              <span className="rounded-full border border-emerald-400/35 bg-emerald-400/[0.08] px-2.5 py-1 text-[11px] text-emerald-300">
+                {r.pill}
               </span>
-              {s.label}
-              {s.label}
-              {!done && (
-                <span className="ml-auto text-xs">{skipped.includes(s.id) ? "Skipped" : s.optional ? "Not set up" : "Needed"}</span>
-              )}
-            </motion.button>
-          );
-        })}
+            ) : (
+              <>
+                <span className="rounded-full border border-gold/35 bg-gold/[0.08] px-2.5 py-1 text-[11px] text-gold">
+                  {skipped.includes(r.id) ? "Skipped" : "Not set up"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onFix(r.id)}
+                  className="text-xs font-medium text-gold transition-colors hover:text-white"
+                >
+                  Connect →
+                </button>
+              </>
+            )}
+          </motion.div>
+        ))}
       </div>
       <Banner>{error}</Banner>
-      <Button onClick={missing.length ? () => onFix(missing[0]!.id) : finish} loading={finishing} className="mt-8 min-w-48">
-        {missing.length ? `Finish ${missing[0]!.label}` : "Open dashboard"}
-        <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
-      </Button>
+      <div className="mt-7 flex flex-col items-center gap-2.5">
+        <Button onClick={missing.length ? () => onFix(missing[0]!.id) : finish} loading={finishing} className="min-w-52">
+          {missing.length ? `Finish ${missing[0]!.label}` : "Open dashboard"}
+          <HugeiconsIcon icon={ArrowRight01Icon} size={16} />
+        </Button>
+        <p className="text-xs text-neutral-500">Or open the dashboard and connect the rest later.</p>
+      </div>
     </Card>
   );
 }
